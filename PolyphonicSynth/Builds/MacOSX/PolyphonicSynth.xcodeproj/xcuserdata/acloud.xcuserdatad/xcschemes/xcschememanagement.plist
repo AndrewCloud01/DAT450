@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>SchemeUserState</key>
+	<dict>
+		<key>PolyphonicSynth - AU.xcscheme</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>2</integer>
+		</dict>
+		<key>PolyphonicSynth - All.xcscheme</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>0</integer>
+		</dict>
+		<key>PolyphonicSynth - Shared Code.xcscheme</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>4</integer>
+		</dict>
+		<key>PolyphonicSynth - Standalone Plugin.xcscheme</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>3</integer>
+		</dict>
+		<key>PolyphonicSynth - VST.xcscheme</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>1</integer>
+		</dict>
+	</dict>
+	<key>SuppressBuildableAutocreation</key>
+	<dict>
+		<key>1F4006ECBFACFD7293FA5742</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>1F54D089EDAC043C9662FF96</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>2B12A28B0A5CF7F2D8BC6DF4</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>592E71EDDCABCCAC65A1BFF2</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>93C876EA2710F1B49EB02A1B</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+	</dict>
+</dict>
+</plist>
