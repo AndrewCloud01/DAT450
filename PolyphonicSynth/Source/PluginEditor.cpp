@@ -58,18 +58,18 @@ public:
 //==============================================================================
 JuceDemoPluginAudioProcessorEditor::JuceDemoPluginAudioProcessorEditor(JuceDemoPluginAudioProcessor& owner)
 	: AudioProcessorEditor(owner),
-	midiKeyboard(owner.keyboardState, MidiKeyboardComponent::horizontalKeyboard),
+	midiKeyboard(owner.keyboardState, MidiKeyboardComponent::horizontalKeyboard),       // Onscreen MIDI Keyboard
 	timecodeDisplayLabel(String()),
-	gainLabel(String(), "Throughput level:"),
+	gainLabel(String(), "Gain:"),                                                       // Throughput Level
 	delayLabel(String(), "Delay:")
 {
 	// add some sliders..
-	addAndMakeVisible(gainSlider = new ParameterSlider(*owner.gainParam));
-	gainSlider->setSliderStyle(Slider::Rotary);
+	addAndMakeVisible(gainSlider = new ParameterSlider(*owner.gainParam));              // Gain slider
+	gainSlider->setSliderStyle(Slider::Rotary);                                         // Pot Slider
 
-	addAndMakeVisible(delaySlider = new ParameterSlider(*owner.delayParam));
-	delaySlider->setSliderStyle(Slider::Rotary);
-
+	addAndMakeVisible(delaySlider = new ParameterSlider(*owner.delayParam));            // Delay slider
+	delaySlider->setSliderStyle(Slider::Rotary);                                        // Pot Slider
+    
 	// add some labels for the sliders..
 	gainLabel.attachToComponent(gainSlider, false);
 	gainLabel.setFont(Font(11.0f));
@@ -78,7 +78,7 @@ JuceDemoPluginAudioProcessorEditor::JuceDemoPluginAudioProcessorEditor(JuceDemoP
 	delayLabel.setFont(Font(11.0f));
 
 	// add the midi keyboard component..
-	addAndMakeVisible(midiKeyboard);
+	addAndMakeVisible(midiKeyboard);                                                    // Display a MIDI keyboard
 
 	// add a label that will display the current timecode and status..
 	addAndMakeVisible(timecodeDisplayLabel);
@@ -131,6 +131,7 @@ void JuceDemoPluginAudioProcessorEditor::timerCallback()
 }
 
 //==============================================================================
+
 // quick-and-dirty function to format a timecode string
 static String timeToTimecodeString(double seconds)
 {
@@ -180,3 +181,4 @@ void JuceDemoPluginAudioProcessorEditor::updateTimecodeDisplay(AudioPlayHead::Cu
 
 	timecodeDisplayLabel.setText(displayText.toString(), dontSendNotification);
 }
+
