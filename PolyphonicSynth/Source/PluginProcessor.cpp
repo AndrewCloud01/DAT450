@@ -11,6 +11,9 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
+#include <iostream>
+using namespace std;
+
 AudioProcessor* JUCE_CALLTYPE createPluginFilter();
 
 // Andrew copy
@@ -51,7 +54,15 @@ public:
 		currentAngle = 0.0;
 		level = velocity * 0.15;
 		tailOff = 0.0;
-
+        
+        
+        // LOG FOR MIDI DISPLAY
+        String message = MidiMessage::getMidiNoteName(midiNoteNumber, true, true, 3);
+        //JuceDemoPluginAudioProcessorEditor::logMessage(message);                          // get working
+        cout<<message;  // Test in Output
+        cout<< "\n";
+        // END LOG
+        
 		double cyclesPerSecond = MidiMessage::getMidiNoteInHertz(midiNoteNumber);       // MIDI to Note - Keyboard keys are off (Octave changer)
 		double cyclesPerSample = cyclesPerSecond / getSampleRate();                     // MIDI Controller octave controller works
 
@@ -165,7 +176,7 @@ JuceDemoPluginAudioProcessor::JuceDemoPluginAudioProcessor()
 	// so that we can easily access them later, but the base class will take care of
 	// deleting them for us.
 	addParameter(gainParam = new AudioParameterFloat("gain", "Gain", 0.0f, 1.0f, 0.9f));
-	addParameter(delayParam = new AudioParameterFloat("delay", "Delay Feedback", 0.0f, 1.0f, 0.5f));
+	//addParameter(delayParam = new AudioParameterFloat("delay", "Delay Feedback", 0.0f, 1.0f, 0.5f));
 
 	initialiseSynth();
 }
@@ -264,6 +275,11 @@ void JuceDemoPluginAudioProcessor::process(AudioBuffer<FloatType>& buffer,      
 	// Now pass any incoming midi messages to our keyboard state object, and let it
 	// add messages to the buffer if the user is clicking on the on-screen keys
 	keyboardState.processNextMidiBuffer(midiMessages, 0, numSamples, true);         // Add keyboard/MIDI keyboard to buffer
+    
+    
+    //logMessage(midiMessages);
+    //cout<<MidiMessage::getDescription();  // Test
+
 
 	// and now get our synth to process these midi events and generate its output.
 	synth.renderNextBlock(buffer, midiMessages, 0, numSamples);                     // Add synth to buffer
@@ -271,7 +287,7 @@ void JuceDemoPluginAudioProcessor::process(AudioBuffer<FloatType>& buffer,      
 	
 
 	// Apply our delay effect to the new output..
-	applyDelay(buffer, delayBuffer);                                                // Add delay 
+	//applyDelay(buffer, delayBuffer);                                                // Add delay
 
 	// In case we have more outputs than inputs, we'll clear any output
 	// channels that didn't contain input data, (because these aren't
@@ -295,6 +311,7 @@ void JuceDemoPluginAudioProcessor::applyGain(AudioBuffer<FloatType>& buffer, Aud
 	for (int channel = 0; channel < getTotalNumOutputChannels(); ++channel)
 		buffer.applyGain(channel, 0, buffer.getNumSamples(), gainLevel);
 }
+
 
 template <typename FloatType>                                                       // Delay Functionality
 void JuceDemoPluginAudioProcessor::applyDelay(AudioBuffer<FloatType>& buffer, AudioBuffer<FloatType>& delayBuffer)
@@ -324,6 +341,9 @@ void JuceDemoPluginAudioProcessor::applyDelay(AudioBuffer<FloatType>& buffer, Au
 	delayPosition = delayPos;
 }
 
+
+        
+        
 void JuceDemoPluginAudioProcessor::updateCurrentTimeInfoFromHost()
 {
 	if (AudioPlayHead* ph = getPlayHead())
@@ -396,6 +416,7 @@ void JuceDemoPluginAudioProcessor::setStateInformation(const void* data, int siz
 	}
 }
 
+         
 //==============================================================================
 // This creates new instances of the plugin..
 AudioProcessor* JUCE_CALLTYPE createPluginFilter()

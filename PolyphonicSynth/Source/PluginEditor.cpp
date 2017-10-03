@@ -60,31 +60,46 @@ JuceDemoPluginAudioProcessorEditor::JuceDemoPluginAudioProcessorEditor(JuceDemoP
 	: AudioProcessorEditor(owner),
 	midiKeyboard(owner.keyboardState, MidiKeyboardComponent::horizontalKeyboard),       // Onscreen MIDI Keyboard
 	timecodeDisplayLabel(String()),
-	gainLabel(String(), "Gain:"),                                                       // Throughput Level
-	delayLabel(String(), "Delay:")
+	gainLabel(String(), "Gain:")//,                                                       // Throughput Level
+	//delayLabel(String(), "Delay:")
 {
 	// add some sliders..
 	addAndMakeVisible(gainSlider = new ParameterSlider(*owner.gainParam));              // Gain slider
 	gainSlider->setSliderStyle(Slider::Rotary);                                         // Pot Slider
 
-	addAndMakeVisible(delaySlider = new ParameterSlider(*owner.delayParam));            // Delay slider
-	delaySlider->setSliderStyle(Slider::Rotary);                                        // Pot Slider
+	//addAndMakeVisible(delaySlider = new ParameterSlider(*owner.delayParam));            // Delay slider
+	//delaySlider->setSliderStyle(Slider::Rotary);                                        // Pot Slider
     
 	// add some labels for the sliders..
 	gainLabel.attachToComponent(gainSlider, false);
 	gainLabel.setFont(Font(11.0f));
 
-	delayLabel.attachToComponent(delaySlider, false);
-	delayLabel.setFont(Font(11.0f));
+	//delayLabel.attachToComponent(delaySlider, false);
+	//delayLabel.setFont(Font(11.0f));
 
 	// add the midi keyboard component..
 	addAndMakeVisible(midiKeyboard);                                                    // Display a MIDI keyboard
 
 	// add a label that will display the current timecode and status..
-	addAndMakeVisible(timecodeDisplayLabel);
-	timecodeDisplayLabel.setFont(Font(Font::getDefaultMonospacedFontName(), 15.0f, Font::plain));
-
-	// set resize limits for this plug-in
+	//addAndMakeVisible(timecodeDisplayLabel);
+	//timecodeDisplayLabel.setFont(Font(Font::getDefaultMonospacedFontName(), 15.0f, Font::plain));
+    
+    //MIDI Display
+    addAndMakeVisible (midiMessagesBox);
+    midiMessagesBox.setMultiLine (true);
+    midiMessagesBox.setReturnKeyStartsNewLine (true);
+    midiMessagesBox.setReadOnly (true);
+    midiMessagesBox.setScrollbarsShown (true);
+    midiMessagesBox.setCaretVisible (false);
+    midiMessagesBox.setPopupMenuEnabled (true);
+    midiMessagesBox.setColour (TextEditor::backgroundColourId, Colour (0x32ffffff));
+    midiMessagesBox.setColour (TextEditor::outlineColourId, Colour (0x1c000000));
+    midiMessagesBox.setColour (TextEditor::shadowColourId, Colour (0x16000000));
+    // End MIDI display
+    
+    // End MIDI display
+    
+    // set resize limits for this plug-in
 	setResizeLimits(400, 200, 800, 300);
 
 	// set our component's initial size to be the last one that was stored in the filter's settings
@@ -112,13 +127,16 @@ void JuceDemoPluginAudioProcessorEditor::resized()
 
 	Rectangle<int> r(getLocalBounds().reduced(8));
 
-	timecodeDisplayLabel.setBounds(r.removeFromTop(26));
+	//timecodeDisplayLabel.setBounds(r.removeFromTop(26));
 	midiKeyboard.setBounds(r.removeFromBottom(70));
+    
+    midiMessagesBox.setBounds (r.removeFromBottom(45));           // TextEditor for MIDI Display
 
 	r.removeFromTop(20);
-	Rectangle<int> sliderArea(r.removeFromTop(60));
+	Rectangle<int> sliderArea(r.removeFromTop(45));
 	gainSlider->setBounds(sliderArea.removeFromLeft(jmin(180, sliderArea.getWidth() / 2)));
-	delaySlider->setBounds(sliderArea.removeFromLeft(jmin(180, sliderArea.getWidth())));
+    
+	//delaySlider->setBounds(sliderArea.removeFromLeft(jmin(180, sliderArea.getWidth())));
 
 	getProcessor().lastUIWidth = getWidth();
 	getProcessor().lastUIHeight = getHeight();
