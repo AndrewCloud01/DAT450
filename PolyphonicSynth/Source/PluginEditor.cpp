@@ -97,14 +97,11 @@ JuceDemoPluginAudioProcessorEditor::JuceDemoPluginAudioProcessorEditor(JuceDemoP
     midiMessagesBox.setColour (TextEditor::shadowColourId, Colour (0x16000000));
     // End MIDI display
     
-    // End MIDI display
-    
     // set resize limits for this plug-in
 	setResizeLimits(400, 200, 800, 300);
 
 	// set our component's initial size to be the last one that was stored in the filter's settings
-	setSize(owner.lastUIWidth,
-		owner.lastUIHeight);
+	setSize(owner.lastUIWidth, owner.lastUIHeight);
 
 	// start a timer which will keep our timecode display updated
 	startTimerHz(30);

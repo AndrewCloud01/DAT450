@@ -57,16 +57,19 @@ public:
         
         
         // LOG FOR MIDI DISPLAY
-        String message = MidiMessage::getMidiNoteName(midiNoteNumber, true, true, 3);
+        //String message = MidiMessage::getMidiNoteName(midiNoteNumber, true, true, 3);
         //JuceDemoPluginAudioProcessorEditor::logMessage(message);                          // get working
-        cout<<message;  // Test in Output
-        cout<< "\n";
+        //cout<<message;  // Test in Output
+        //cout<< "\n";
         // END LOG
         
 		double cyclesPerSecond = MidiMessage::getMidiNoteInHertz(midiNoteNumber);       // MIDI to Note - Keyboard keys are off (Octave changer)
+        
 		double cyclesPerSample = cyclesPerSecond / getSampleRate();                     // MIDI Controller octave controller works
-
-		angleDelta = cyclesPerSample * 2.0 * double_Pi;
+        
+        // PLAY SINE WAVE
+		angleDelta = cyclesPerSample * 2.0 * double_Pi;           // (2pi*f
+        // PLAY SINE WAVE
 	}
 
 	void stopNote(float /*velocity*/, bool allowTailOff) override           // Stop Note
@@ -97,7 +100,7 @@ public:
 		// MidiMessage = MidiMessage::getPitchWheelValue();
 		
 		// Variation 2
-		// frequency.setValue(currentlyPlayingNote.getFrequencyInHertz());
+		 //frequency.setValue(currentlyPlayingNote.getFrequencyInHertz());
 		
 		
 		
@@ -197,7 +200,8 @@ void JuceDemoPluginAudioProcessor::initialiseSynth()
         // synth.addVoice(new SquareWaveVoice());
 
 	// ..and give the synth a sound to play
-	synth.addSound(new SineWaveSound());
+    
+	synth.addSound(new SineWaveSound());                              // SYNTH PLAY
 }
 
 //==============================================================================
