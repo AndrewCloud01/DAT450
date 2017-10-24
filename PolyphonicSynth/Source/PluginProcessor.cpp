@@ -202,6 +202,15 @@ void JuceDemoPluginAudioProcessor::initialiseSynth()
 	// ..and give the synth a sound to play
     
 	synth.addSound(new SineWaveSound());                              // SYNTH PLAY
+    
+    //synth.handlePitchWheel(1, MidiMessage::getPitchWheelValue());
+    // Add Pitch Bend
+   // synth.setPitchbendTrackingMode (MPEInstrument::allNotesOnChannel);  // Pitch Bend
+    // All notes
+   // synth.enableLegacyMode(24);
+   // synth.setVoiceStealingEnabled(false);
+    //visualiserInstrument.enableLegacyMode(24);
+   
 }
 
 //==============================================================================
@@ -288,7 +297,8 @@ void JuceDemoPluginAudioProcessor::process(AudioBuffer<FloatType>& buffer,      
 	// and now get our synth to process these midi events and generate its output.
 	synth.renderNextBlock(buffer, midiMessages, 0, numSamples);                     // Add synth to buffer
 	
-	
+    
+    
 
 	// Apply our delay effect to the new output..
 	//applyDelay(buffer, delayBuffer);                                                // Add delay

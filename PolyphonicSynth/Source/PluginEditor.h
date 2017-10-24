@@ -12,15 +12,16 @@
 
 #include "../JuceLibraryCode/JuceHeader.h"
 #include "PluginProcessor.h"
-#include <iostream>
-using namespace std;
+//#include <iostream>
+//using namespace std;
 
 
 //==============================================================================
 /** This is the editor component that our filter will display.
 */
 class JuceDemoPluginAudioProcessorEditor : public AudioProcessorEditor,
-	private Timer
+	private Timer,
+    public MidiInputCallback
 {
 public:
 	JuceDemoPluginAudioProcessorEditor(JuceDemoPluginAudioProcessor&);
@@ -30,8 +31,11 @@ public:
 	void paint(Graphics&) override;
 	void resized() override;
 	void timerCallback() override;
+    
+    void handleIncomingMidiMessage (MidiInput*, const MidiMessage& message);
 
-
+    
+    
     // Begin Audio Post Message
     //static String getMidiMessageDescription (const MidiMessage& m)
     String getMidiMessageDescription (const MidiMessage& m)
@@ -58,6 +62,8 @@ public:
         
         return String::toHexString (m.getRawData(), m.getRawDataSize());
     }
+     
+    
     
     void logMessage (const String& m)
     {
@@ -71,7 +77,35 @@ public:
         const String midiMessageString (description + " (" + source + ")"); // [7]
         logMessage (midiMessageString);
     }
-
+     
+    void addMessageToList (const MidiMessage& message, const String& source)
+    {
+        const String description (getMidiMessageDescription (message));
+        const String midiMessageString (description + " (" + source + ")"); // [7]
+        logMessage (midiMessageString);
+    }
+    
+    void postMessageToList (const MidiMessage& message, const String& source)
+    {
+        (new IncomingMessageCallback (this, message, source))->post();
+    }
+    
+    void handleNoteOn (MidiKeyboardState*, int midiChannel, int midiNoteNumber, float velocity)
+    {
+        
+            MidiMessage m (MidiMessage::noteOn (midiChannel, midiNoteNumber, velocity));
+           // m.setTimeStamp (Time::getMillisecondCounterHiRes() * 0.001);
+            postMessageToList (m, "On-Screen Keybaord");
+        
+    }
+    void handleNoteOff (MidiKeyboardState*, int midiChannel, int midiNoteNumber, /*float velocity*/)
+    {
+        
+            MidiMessage m (MidiMessage::noteOff (midiChannel, midiNoteNumber));
+            //m.setTimeStamp (Time::getMillisecondCounterHiRes() * 0.001);
+            postMessageToList (m, "On-Screen Keyboard");
+        
+    }
 
 
 private:
@@ -79,11 +113,15 @@ private:
     
     TextEditor midiMessagesBox;
     
-    MidiMessage message;
+    Label midiLabel;
+    
+    //MidiMessage message;
+    AudioDeviceManager audioDeviceManager;
 
 	MidiKeyboardComponent midiKeyboard;
 	Label timecodeDisplayLabel, gainLabel, delayLabel;
-	ScopedPointer<ParameterSlider> gainSlider, delaySlider;
+    ScopedPointer<ParameterSlider> gainSlider, delaySlider;
+    
 
 	//==============================================================================
 	JuceDemoPluginAudioProcessor& getProcessor() const

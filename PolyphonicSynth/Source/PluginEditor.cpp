@@ -78,13 +78,16 @@ JuceDemoPluginAudioProcessorEditor::JuceDemoPluginAudioProcessorEditor(JuceDemoP
 	//delayLabel.setFont(Font(11.0f));
 
 	// add the midi keyboard component..
-	addAndMakeVisible(midiKeyboard);                                                    // Display a MIDI keyboard
+	addAndMakeVisible(midiKeyboard);
+    owner.keyboardState.addListener(this);
+    // Display a MIDI keyboard
 
 	// add a label that will display the current timecode and status..
 	//addAndMakeVisible(timecodeDisplayLabel);
 	//timecodeDisplayLabel.setFont(Font(Font::getDefaultMonospacedFontName(), 15.0f, Font::plain));
     
     //MIDI Display
+    /*
     addAndMakeVisible (midiMessagesBox);
     midiMessagesBox.setMultiLine (true);
     midiMessagesBox.setReturnKeyStartsNewLine (true);
@@ -95,17 +98,55 @@ JuceDemoPluginAudioProcessorEditor::JuceDemoPluginAudioProcessorEditor(JuceDemoP
     midiMessagesBox.setColour (TextEditor::backgroundColourId, Colour (0x32ffffff));
     midiMessagesBox.setColour (TextEditor::outlineColourId, Colour (0x1c000000));
     midiMessagesBox.setColour (TextEditor::shadowColourId, Colour (0x16000000));
+     */
     // End MIDI display
+    
+   
+    
     
     // set resize limits for this plug-in
 	setResizeLimits(400, 200, 800, 300);
 
 	// set our component's initial size to be the last one that was stored in the filter's settings
 	setSize(owner.lastUIWidth, owner.lastUIHeight);
+    
+    // midi display 2
+    audioDeviceManager.setMidiInputEnabled("USB Axiom 49 Port 1", true);
+    audioDeviceManager.addMidiInputCallback(String::empty, this);
+    midiLabel.setText("midiText", sendNotification);
+    addAndMakeVisible(midiLabel);
+    // end midi display 2
 
 	// start a timer which will keep our timecode display updated
 	startTimerHz(30);
 }
+
+void JuceDemoPluginAudioProcessorEditor::handleIncomingMidiMessage (MidiInput* source, const MidiMessage& message)
+{
+    keyboardState.processNextMidiEvent (message);
+    postMessageToList (message, source->getName());
+}
+
+/*
+// MIDI Messages
+void JuceDemoPluginAudioProcessorEditor::handleIncomingMidiMessage (MidiInput*, const MidiMessage& message)
+{
+    DBG("MIDI Message Received\n");
+    
+    String midiText;
+    
+    if(message.isNoteOnOrOff())
+    {
+        midiText << "NoteOn: Channel " << message.getChannel();
+        midiText << ":Number" << message.getNoteNumber();
+        midiText << ":Velocity" << message.getVelocity();
+    }
+    midiLabel.setText(midiText, dontSendNotification);
+    //midiLabel.getTextValue() = midiText;
+    //midiLabel.getText() = midiText;
+    //cout << midiText;
+}
+ */
 
 JuceDemoPluginAudioProcessorEditor::~JuceDemoPluginAudioProcessorEditor()
 {
@@ -127,13 +168,18 @@ void JuceDemoPluginAudioProcessorEditor::resized()
 	//timecodeDisplayLabel.setBounds(r.removeFromTop(26));
 	midiKeyboard.setBounds(r.removeFromBottom(70));
     
-    midiMessagesBox.setBounds (r.removeFromBottom(45));           // TextEditor for MIDI Display
+    //midiMessagesBox.setBounds (r.removeFromBottom(45));           // TextEditor for MIDI Display
+    
+    // MIDI Display2
+    midiLabel.setBounds(r.removeFromBottom(45));
 
 	r.removeFromTop(20);
 	Rectangle<int> sliderArea(r.removeFromTop(45));
 	gainSlider->setBounds(sliderArea.removeFromLeft(jmin(180, sliderArea.getWidth() / 2)));
     
 	//delaySlider->setBounds(sliderArea.removeFromLeft(jmin(180, sliderArea.getWidth())));
+    
+    
 
 	getProcessor().lastUIWidth = getWidth();
 	getProcessor().lastUIHeight = getHeight();
