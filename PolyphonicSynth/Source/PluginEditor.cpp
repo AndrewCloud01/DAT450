@@ -13,16 +13,13 @@
 
 //==============================================================================
 // This is a handy slider subclass that controls an AudioProcessorParameter
-// (may move this class into the library itself at some point in the future..)
-class JuceDemoPluginAudioProcessorEditor::ParameterSlider : public Slider,
-	private Timer
+class JuceDemoPluginAudioProcessorEditor::ParameterSlider : public Slider
 {
 public:
 	ParameterSlider(AudioProcessorParameter& p)
 		: Slider(p.getName(256)), param(p)
 	{
 		setRange(0.0, 1.0, 0.0);
-		startTimerHz(30);
 		updateSliderPos();
 	}
 
@@ -33,8 +30,6 @@ public:
 		else
 			param.setValue((float)Slider::getValue());
 	}
-
-	void timerCallback() override { updateSliderPos(); }
 
 	void startedDragging() override { param.beginChangeGesture(); }
 	void stoppedDragging() override { param.endChangeGesture(); }
@@ -56,47 +51,86 @@ public:
 };
 
 //==============================================================================
+// BEGIN PLUGIN MAIN COMPONENT CONSTRUCTOR/DESTRUCTOR
+
 JuceDemoPluginAudioProcessorEditor::JuceDemoPluginAudioProcessorEditor(JuceDemoPluginAudioProcessor& owner)
 	: AudioProcessorEditor(owner),
-	midiKeyboard(owner.keyboardState, MidiKeyboardComponent::horizontalKeyboard),
-	timecodeDisplayLabel(String()),
-	gainLabel(String(), "Throughput level:"),
-	delayLabel(String(), "Delay:")
+    //midiKeyboard(owner.keyboardState, MidiKeyboardComponent::horizontalKeyboard),        // Onscreen MIDI Keyboard
+    midiKeyboard(midiKeyboardState, MidiKeyboardComponent::horizontalKeyboard),            // MIDI Controller
+	gainLabel(String(), "Gain:"),                                                          // Throughput Level
+	delayLabel(String(), "Delay:")                                                         // Delay
 {
-	// add some sliders..
-	addAndMakeVisible(gainSlider = new ParameterSlider(*owner.gainParam));
-	gainSlider->setSliderStyle(Slider::Rotary);
+    
+    // MIDI Device Input List
+    addAndMakeVisible (midiInputListLabel);
+    midiInputListLabel.setText ("MIDI Input:", dontSendNotification);
+    midiInputListLabel.attachToComponent (&midiInputList, true);
+    
+    addAndMakeVisible (midiInputList);
+    midiInputList.setTextWhenNoChoicesAvailable ("No MIDI Inputs Enabled");
+    const StringArray midiInputs (MidiInput::getDevices());
+    midiInputList.addItemList (midiInputs, 1);
+    midiInputList.addListener (this);
+    
+    // find the first enabled device and use that by default
+    for (int i = 0; i < midiInputs.size(); ++i)
+    {
+        if (deviceManager.isMidiInputEnabled (midiInputs[i]))
+        {
+            setMidiInput (i);
+            break;
+        }
+    }
+    
+    // if no enabled devices were found just use the first one in the list
+    if (midiInputList.getSelectedId() == 0)
+    {
+        setMidiInput (0);
+    }
+    
+    // GAIN SLIDER AND LABEL
+	addAndMakeVisible(gainSlider = new ParameterSlider(*owner.gainParam));              // Gain slider
+	gainSlider->setSliderStyle(Slider::Rotary);                                         // Pot Slider
+    gainLabel.attachToComponent(gainSlider, false);
+    gainLabel.setFont(Font(11.0f));
+    
+    // DELAY SLIDER AND LABEL
+	addAndMakeVisible(delaySlider = new ParameterSlider(*owner.delayParam));          // Delay slider
+	delaySlider->setSliderStyle(Slider::Rotary);                                      // Pot Slider
+    delayLabel.attachToComponent(delaySlider, false);
+    delayLabel.setFont(Font(11.0f));
 
-	addAndMakeVisible(delaySlider = new ParameterSlider(*owner.delayParam));
-	delaySlider->setSliderStyle(Slider::Rotary);
+	// ON-SCREEN MIDI KEYBOARD COMPONENT
+	//addAndMakeVisible(midiKeyboard);
+    
+    midiKeyboardState.addListener(this);    // Listen for MIDI Controller Input
 
-	// add some labels for the sliders..
-	gainLabel.attachToComponent(gainSlider, false);
-	gainLabel.setFont(Font(11.0f));
-
-	delayLabel.attachToComponent(delaySlider, false);
-	delayLabel.setFont(Font(11.0f));
-
-	// add the midi keyboard component..
-	addAndMakeVisible(midiKeyboard);
-
-	// add a label that will display the current timecode and status..
-	addAndMakeVisible(timecodeDisplayLabel);
-	timecodeDisplayLabel.setFont(Font(Font::getDefaultMonospacedFontName(), 15.0f, Font::plain));
-
-	// set resize limits for this plug-in
-	setResizeLimits(400, 200, 800, 300);
+    //MIDI Display
+    addAndMakeVisible (midiMessagesBox);
+    midiMessagesBox.setMultiLine (true);
+    midiMessagesBox.setReturnKeyStartsNewLine (true);
+    midiMessagesBox.setReadOnly (true);
+    midiMessagesBox.setScrollbarsShown (true);
+    midiMessagesBox.setCaretVisible (false);
+    midiMessagesBox.setPopupMenuEnabled (true);
+    midiMessagesBox.setColour (TextEditor::backgroundColourId, Colour (0x32ffffff));
+    midiMessagesBox.setColour (TextEditor::outlineColourId, Colour (0x1c000000));
+    midiMessagesBox.setColour (TextEditor::shadowColourId, Colour (0x16000000));
+    // End MIDI display
+    
+    // set resize limits for this plug-in
+	//setResizeLimits(400, 200, 800, 300);  // Old Resize
+    setResizeLimits(800, 400, 800, 500);
 
 	// set our component's initial size to be the last one that was stored in the filter's settings
-	setSize(owner.lastUIWidth,
-		owner.lastUIHeight);
-
-	// start a timer which will keep our timecode display updated
-	startTimerHz(30);
+	setSize(owner.lastUIWidth, owner.lastUIHeight);
 }
 
 JuceDemoPluginAudioProcessorEditor::~JuceDemoPluginAudioProcessorEditor()
 {
+    midiKeyboardState.removeListener (this);
+    deviceManager.removeMidiInputCallback (MidiInput::getDevices()[midiInputList.getSelectedItemIndex()], this);
+    midiInputList.removeListener (this);
 }
 
 //==============================================================================
@@ -111,72 +145,134 @@ void JuceDemoPluginAudioProcessorEditor::resized()
 	// This lays out our child components...
 
 	Rectangle<int> r(getLocalBounds().reduced(8));
-
-	timecodeDisplayLabel.setBounds(r.removeFromTop(26));
-	midiKeyboard.setBounds(r.removeFromBottom(70));
-
-	r.removeFromTop(20);
-	Rectangle<int> sliderArea(r.removeFromTop(60));
-	gainSlider->setBounds(sliderArea.removeFromLeft(jmin(180, sliderArea.getWidth() / 2)));
+    
+    // MIDI Display
+    midiInputList.setBounds (r.removeFromTop (35).removeFromRight (getWidth() - 75).reduced(4));  //Flush Left
+    
+    // ON-SCREEN MIDI KEYBOARD
+	//midiKeyboard.setBounds(r.removeFromTop(60).reduced(4));
+    
+	r.removeFromTop(25);    // Space
+    
+	Rectangle<int> sliderArea(r.removeFromTop(40).expanded(6)); // Pot Areas (Gain and Delay)
+    
+    // Gain Pot Location
+	gainSlider->setBounds(sliderArea.removeFromLeft(jmin(160, sliderArea.getWidth() / 2)));
+    // Delay Pot Location
 	delaySlider->setBounds(sliderArea.removeFromLeft(jmin(180, sliderArea.getWidth())));
+    
+    r.removeFromTop(10);    // Space
+    
+    // MIDI Display Textbox
+    midiMessagesBox.setBounds (r.removeFromBottom(20));           // TextEditor for MIDI Display
+    midiMessagesBox.setBounds (r.reduced (2));
+    
 
 	getProcessor().lastUIWidth = getWidth();
 	getProcessor().lastUIHeight = getHeight();
 }
-
 //==============================================================================
-void JuceDemoPluginAudioProcessorEditor::timerCallback()
+
+// BEGIN MIDI DISPLAY METHODS
+
+ // These methods handle callbacks from the midi device
+void JuceDemoPluginAudioProcessorEditor::handleIncomingMidiMessage (MidiInput* source, const MidiMessage& message)
 {
-	updateTimecodeDisplay(getProcessor().lastPosInfo);
+    const ScopedValueSetter<bool> scopedInputFlag (isAddingFromMidiInput, true);
+    midiKeyboardState.processNextMidiEvent (message);
+    postMessageToList (message, source->getName());
 }
 
+ // Begin Audio Post Message
+String JuceDemoPluginAudioProcessorEditor::getMidiMessageDescription (const MidiMessage& m)
+{
+    if (m.isNoteOn())           return "Note on "  + MidiMessage::getMidiNoteName (m.getNoteNumber(), true, true, 3);
+    if (m.isNoteOff())          return "Note off " + MidiMessage::getMidiNoteName (m.getNoteNumber(), true, true, 3);
+    if (m.isProgramChange())    return "Program change " + String (m.getProgramChangeNumber());
+    if (m.isPitchWheel())       return "Pitch wheel " + String (m.getPitchWheelValue());
+    if (m.isAftertouch())       return "After touch " + MidiMessage::getMidiNoteName (m.getNoteNumber(), true, true, 3) +  ": " + String (m.getAfterTouchValue());
+    if (m.isChannelPressure())  return "Channel pressure " + String (m.getChannelPressureValue());
+    if (m.isAllNotesOff())      return "All notes off";
+    if (m.isAllSoundOff())      return "All sound off";
+    if (m.isMetaEvent())        return "Meta event";
+    
+    if (m.isController())
+    {
+        String name (MidiMessage::getControllerName (m.getControllerNumber()));
+        
+        if (name.isEmpty())
+            name = "[" + String (m.getControllerNumber()) + "]";
+        
+        return "Controller " + name + ": " + String (m.getControllerValue());
+    }
+    
+    return String::toHexString (m.getRawData(), m.getRawDataSize());
+}
+
+// Log MIDI Message for Display
+void JuceDemoPluginAudioProcessorEditor::logMessage (const String& m)
+{
+    midiMessagesBox.moveCaretToEnd();
+    midiMessagesBox.insertTextAtCaret (m + newLine);
+}
+// Compile MIDI Message Info and Log
+void JuceDemoPluginAudioProcessorEditor::addMessageToList (const MidiMessage& message, const String& source)
+{
+    const String description (getMidiMessageDescription (message));
+    const String midiMessageString (description + " (" + source + ")"); // [7]
+    logMessage (midiMessageString);
+}
+
+// Prepare MIDI Message for Log
+void JuceDemoPluginAudioProcessorEditor::postMessageToList (const MidiMessage& message, const String& source)
+{
+    (new IncomingMessageCallback (this, message, source))->post();
+}
+
+// Log NoteOn Messages
+void JuceDemoPluginAudioProcessorEditor::handleNoteOn (MidiKeyboardState*, int midiChannel, int midiNoteNumber, float velocity)
+{
+    if (! isAddingFromMidiInput)
+    {
+        MidiMessage m (MidiMessage::noteOn (midiChannel, midiNoteNumber, velocity));
+        postMessageToList (m, "On-Screen Keyboard");
+    }
+}
+
+// Log NoteOff Messages
+void JuceDemoPluginAudioProcessorEditor::handleNoteOff (MidiKeyboardState*, int midiChannel, int midiNoteNumber, float /*floatvelocity*/)
+{
+    if (! isAddingFromMidiInput)
+    {
+        MidiMessage m (MidiMessage::noteOff (midiChannel, midiNoteNumber));
+        postMessageToList (m, "On-Screen Keyboard");
+    }
+}
+
+// MIDI Input ComboBox Change Action
+void JuceDemoPluginAudioProcessorEditor::comboBoxChanged (ComboBox* box)
+{
+    if (box == &midiInputList)
+        setMidiInput (midiInputList.getSelectedItemIndex());
+}
+
+// Starts listening to a MIDI input device, enabling it if necessary.
+void JuceDemoPluginAudioProcessorEditor::setMidiInput (int index)
+{
+    const StringArray list (MidiInput::getDevices());
+    
+    deviceManager.removeMidiInputCallback (list[lastInputIndex], this);
+    
+    const String newInput (list[index]);
+    
+    if (! deviceManager.isMidiInputEnabled (newInput))
+        deviceManager.setMidiInputEnabled (newInput, true);
+    
+    deviceManager.addMidiInputCallback (newInput, this);
+    midiInputList.setSelectedId (index + 1, dontSendNotification);
+    
+    lastInputIndex = index;
+}
+
+// END MIDI DISPLAY METHODS
 //==============================================================================
-// quick-and-dirty function to format a timecode string
-static String timeToTimecodeString(double seconds)
-{
-	const int millisecs = roundToInt(seconds * 1000.0);
-	const int absMillisecs = std::abs(millisecs);
-
-	return String::formatted("%02d:%02d:%02d.%03d",
-		millisecs / 3600000,
-		(absMillisecs / 60000) % 60,
-		(absMillisecs / 1000) % 60,
-		absMillisecs % 1000);
-}
-
-// quick-and-dirty function to format a bars/beats string
-static String quarterNotePositionToBarsBeatsString(double quarterNotes, int numerator, int denominator)
-{
-	if (numerator == 0 || denominator == 0)
-		return "1|1|000";
-
-	const int quarterNotesPerBar = (numerator * 4 / denominator);
-	const double beats = (fmod(quarterNotes, quarterNotesPerBar) / quarterNotesPerBar) * numerator;
-
-	const int bar = ((int)quarterNotes) / quarterNotesPerBar + 1;
-	const int beat = ((int)beats) + 1;
-	const int ticks = ((int)(fmod(beats, 1.0) * 960.0 + 0.5));
-
-	return String::formatted("%d|%d|%03d", bar, beat, ticks);
-}
-
-// Updates the text in our position label.
-void JuceDemoPluginAudioProcessorEditor::updateTimecodeDisplay(AudioPlayHead::CurrentPositionInfo pos)
-{
-	MemoryOutputStream displayText;
-
-	displayText << "[" << SystemStats::getJUCEVersion() << "]   "
-		<< String(pos.bpm, 2) << " bpm, "
-		<< pos.timeSigNumerator << '/' << pos.timeSigDenominator
-		<< "  -  " << timeToTimecodeString(pos.timeInSeconds)
-		<< "  -  " << quarterNotePositionToBarsBeatsString(pos.ppqPosition,
-			pos.timeSigNumerator,
-			pos.timeSigDenominator);
-
-	if (pos.isRecording)
-		displayText << "  (recording)";
-	else if (pos.isPlaying)
-		displayText << "  (playing)";
-
-	timecodeDisplayLabel.setText(displayText.toString(), dontSendNotification);
-}
