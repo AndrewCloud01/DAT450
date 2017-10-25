@@ -14,7 +14,7 @@
 #include "PluginProcessor.h"
 #include <iostream>
 using namespace std;
-
+// New
 
 //==============================================================================
 /** This is the editor component that our filter will display.
