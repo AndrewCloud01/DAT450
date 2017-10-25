@@ -12,115 +12,77 @@
 
 #include "../JuceLibraryCode/JuceHeader.h"
 #include "PluginProcessor.h"
-//#include <iostream>
-//using namespace std;
+#include <iostream>
+using namespace std;
 
 
 //==============================================================================
 /** This is the editor component that our filter will display.
 */
 class JuceDemoPluginAudioProcessorEditor : public AudioProcessorEditor,
-	private Timer,
-    public MidiInputCallback
+    private MidiKeyboardStateListener,
+    private MidiInputCallback,
+    private ComboBox::Listener
 {
 public:
+    // MAIN COMPONENT CONSTRUCTOR/DESTRUCTOR
 	JuceDemoPluginAudioProcessorEditor(JuceDemoPluginAudioProcessor&);
 	~JuceDemoPluginAudioProcessorEditor();
 
 	//==============================================================================
 	void paint(Graphics&) override;
 	void resized() override;
-	void timerCallback() override;
-    
-    void handleIncomingMidiMessage (MidiInput*, const MidiMessage& message);
+    //==============================================================================
+    // BEGIN MIDI DISPLAY METHODS
 
+    void handleIncomingMidiMessage (MidiInput* source, const MidiMessage& message) override;
+    String getMidiMessageDescription (const MidiMessage& m);
+    void logMessage (const String& m);
+    void addMessageToList (const MidiMessage& message, const String& source);
+    void postMessageToList (const MidiMessage& message, const String& source);
+    void handleNoteOn (MidiKeyboardState*, int midiChannel, int midiNoteNumber, float velocity) override;
+    void handleNoteOff (MidiKeyboardState*, int midiChannel, int midiNoteNumber, float /*floatvelocity*/) override;
+    void comboBoxChanged (ComboBox* box) override;
+    void setMidiInput (int index);
     
-    
-    // Begin Audio Post Message
-    //static String getMidiMessageDescription (const MidiMessage& m)
-    String getMidiMessageDescription (const MidiMessage& m)
+    // This is used to dispach an incoming message to the message thread
+    class IncomingMessageCallback   : public CallbackMessage
     {
-        if (m.isNoteOn())           return "Note on "  + MidiMessage::getMidiNoteName (m.getNoteNumber(), true, true, 3);
-        if (m.isNoteOff())          return "Note off " + MidiMessage::getMidiNoteName (m.getNoteNumber(), true, true, 3);
-        if (m.isProgramChange())    return "Program change " + String (m.getProgramChangeNumber());
-        if (m.isPitchWheel())       return "Pitch wheel " + String (m.getPitchWheelValue());
-        if (m.isAftertouch())       return "After touch " + MidiMessage::getMidiNoteName (m.getNoteNumber(), true, true, 3) +  ": " + String (m.getAfterTouchValue());
-        if (m.isChannelPressure())  return "Channel pressure " + String (m.getChannelPressureValue());
-        if (m.isAllNotesOff())      return "All notes off";
-        if (m.isAllSoundOff())      return "All sound off";
-        if (m.isMetaEvent())        return "Meta event";
+    public:
+        IncomingMessageCallback (JuceDemoPluginAudioProcessorEditor* o, const MidiMessage& m, const String& s)
+        : owner (o), message (m), source (s)
+        {}
         
-        if (m.isController())
+        void messageCallback() override
         {
-            String name (MidiMessage::getControllerName (m.getControllerNumber()));
-            
-            if (name.isEmpty())
-                name = "[" + String (m.getControllerNumber()) + "]";
-            
-            return "Controller " + name + ": " + String (m.getControllerValue());
+            if (owner != nullptr)
+                owner->addMessageToList (message, source);
         }
         
-        return String::toHexString (m.getRawData(), m.getRawDataSize());
-    }
-     
+        Component::SafePointer<JuceDemoPluginAudioProcessorEditor> owner;
+        MidiMessage message;
+        String source;
+    };
     
-    
-    void logMessage (const String& m)
-    {
-        midiMessagesBox.moveCaretToEnd();
-        midiMessagesBox.insertTextAtCaret (m + newLine);
-    }
-    
-    void addMessageToList (const MidiMessage& message, const String& source){
-        const String description (getMidiMessageDescription (message));
-        
-        const String midiMessageString (description + " (" + source + ")"); // [7]
-        logMessage (midiMessageString);
-    }
-     
-    void addMessageToList (const MidiMessage& message, const String& source)
-    {
-        const String description (getMidiMessageDescription (message));
-        const String midiMessageString (description + " (" + source + ")"); // [7]
-        logMessage (midiMessageString);
-    }
-    
-    void postMessageToList (const MidiMessage& message, const String& source)
-    {
-        (new IncomingMessageCallback (this, message, source))->post();
-    }
-    
-    void handleNoteOn (MidiKeyboardState*, int midiChannel, int midiNoteNumber, float velocity)
-    {
-        
-            MidiMessage m (MidiMessage::noteOn (midiChannel, midiNoteNumber, velocity));
-           // m.setTimeStamp (Time::getMillisecondCounterHiRes() * 0.001);
-            postMessageToList (m, "On-Screen Keybaord");
-        
-    }
-    void handleNoteOff (MidiKeyboardState*, int midiChannel, int midiNoteNumber, /*float velocity*/)
-    {
-        
-            MidiMessage m (MidiMessage::noteOff (midiChannel, midiNoteNumber));
-            //m.setTimeStamp (Time::getMillisecondCounterHiRes() * 0.001);
-            postMessageToList (m, "On-Screen Keyboard");
-        
-    }
+    // END MIDI DISPLAY METHODS
+    //==============================================================================
 
-
+    
 private:
-	class ParameterSlider;
+    // GUI Components
+    AudioDeviceManager deviceManager;                       // Audio Devices
+    ComboBox midiInputList;                                 // MIDI Input List (Controllers
+    int lastInputIndex;
+    bool isAddingFromMidiInput;                             // Checks if from MIDI Controller
     
-    TextEditor midiMessagesBox;
-    
-    Label midiLabel;
-    
-    //MidiMessage message;
-    AudioDeviceManager audioDeviceManager;
+	class ParameterSlider;                                  // Pots
 
-	MidiKeyboardComponent midiKeyboard;
-	Label timecodeDisplayLabel, gainLabel, delayLabel;
-    ScopedPointer<ParameterSlider> gainSlider, delaySlider;
+    TextEditor midiMessagesBox;                             // For MIDI Display
+    
+    MidiKeyboardState midiKeyboardState;                    // For MIDI Input
+	MidiKeyboardComponent midiKeyboard;                     // For MIDI Controller
+	Label midiInputListLabel, gainLabel, delayLabel;        // Slider Labels
+    ScopedPointer<ParameterSlider> gainSlider, delaySlider; // Slideres
     
 
 	//==============================================================================
@@ -129,5 +91,5 @@ private:
 		return static_cast<JuceDemoPluginAudioProcessor&> (processor);
 	}
     
-    void updateTimecodeDisplay(AudioPlayHead::CurrentPositionInfo);
 };
+

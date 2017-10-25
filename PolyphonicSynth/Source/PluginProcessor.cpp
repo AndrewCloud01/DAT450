@@ -16,11 +16,6 @@ using namespace std;
 
 AudioProcessor* JUCE_CALLTYPE createPluginFilter();
 
-// Andrew copy
-// THIS IS A TEST FOR GITHUB
-// INSTEAD OF THE DESKTOP FOLDER
-
-
 
 //==============================================================================
 /** A demo synth sound that's just a basic sine wave.. */
@@ -55,20 +50,12 @@ public:
 		level = velocity * 0.15;
 		tailOff = 0.0;
         
-        
-        // LOG FOR MIDI DISPLAY
-        //String message = MidiMessage::getMidiNoteName(midiNoteNumber, true, true, 3);
-        //JuceDemoPluginAudioProcessorEditor::logMessage(message);                          // get working
-        //cout<<message;  // Test in Output
-        //cout<< "\n";
-        // END LOG
-        
-		double cyclesPerSecond = MidiMessage::getMidiNoteInHertz(midiNoteNumber);       // MIDI to Note - Keyboard keys are off (Octave changer)
+		double cyclesPerSecond = MidiMessage::getMidiNoteInHertz(midiNoteNumber);       // MIDI to Note - Keyboard keys are off
         
 		double cyclesPerSample = cyclesPerSecond / getSampleRate();                     // MIDI Controller octave controller works
         
         // PLAY SINE WAVE
-		angleDelta = cyclesPerSample * 2.0 * double_Pi;           // (2pi*f
+		angleDelta = cyclesPerSample * 2.0 * double_Pi;           // (2pi*f)
         // PLAY SINE WAVE
 	}
 
@@ -100,9 +87,7 @@ public:
 		// MidiMessage = MidiMessage::getPitchWheelValue();
 		
 		// Variation 2
-		 //frequency.setValue(currentlyPlayingNote.getFrequencyInHertz());
-		
-		
+        // frequency.setValue(currentlyPlayingNote.getFrequencyInHertz());
 		
 	}
 
@@ -179,7 +164,7 @@ JuceDemoPluginAudioProcessor::JuceDemoPluginAudioProcessor()
 	// so that we can easily access them later, but the base class will take care of
 	// deleting them for us.
 	addParameter(gainParam = new AudioParameterFloat("gain", "Gain", 0.0f, 1.0f, 0.9f));
-	//addParameter(delayParam = new AudioParameterFloat("delay", "Delay Feedback", 0.0f, 1.0f, 0.5f));
+	addParameter(delayParam = new AudioParameterFloat("delay", "Delay Feedback", 0.0f, 1.0f, 0.5f));
 
 	initialiseSynth();
 }
@@ -203,12 +188,14 @@ void JuceDemoPluginAudioProcessor::initialiseSynth()
     
 	synth.addSound(new SineWaveSound());                              // SYNTH PLAY
     
+    // BEGIN PITCHBEND TEST
+    
     //synth.handlePitchWheel(1, MidiMessage::getPitchWheelValue());
     // Add Pitch Bend
-   // synth.setPitchbendTrackingMode (MPEInstrument::allNotesOnChannel);  // Pitch Bend
+    // synth.setPitchbendTrackingMode (MPEInstrument::allNotesOnChannel);  // Pitch Bend
     // All notes
-   // synth.enableLegacyMode(24);
-   // synth.setVoiceStealingEnabled(false);
+    // synth.enableLegacyMode(24);
+    // synth.setVoiceStealingEnabled(false);
     //visualiserInstrument.enableLegacyMode(24);
    
 }
@@ -288,20 +275,14 @@ void JuceDemoPluginAudioProcessor::process(AudioBuffer<FloatType>& buffer,      
 	// Now pass any incoming midi messages to our keyboard state object, and let it
 	// add messages to the buffer if the user is clicking on the on-screen keys
 	keyboardState.processNextMidiBuffer(midiMessages, 0, numSamples, true);         // Add keyboard/MIDI keyboard to buffer
-    
-    
-    //logMessage(midiMessages);
-    //cout<<MidiMessage::getDescription();  // Test
 
 
 	// and now get our synth to process these midi events and generate its output.
 	synth.renderNextBlock(buffer, midiMessages, 0, numSamples);                     // Add synth to buffer
 	
     
-    
-
 	// Apply our delay effect to the new output..
-	//applyDelay(buffer, delayBuffer);                                                // Add delay
+	applyDelay(buffer, delayBuffer);                                                // Add delay
 
 	// In case we have more outputs than inputs, we'll clear any output
 	// channels that didn't contain input data, (because these aren't
@@ -311,7 +292,7 @@ void JuceDemoPluginAudioProcessor::process(AudioBuffer<FloatType>& buffer,      
 
 	applyGain(buffer, delayBuffer); // apply our gain-change to the outgoing data.. // Add delay
 
-									// Now ask the host for the current time so we can store it to be displayed later...
+    // Now ask the host for the current time so we can store it to be displayed later...
 	updateCurrentTimeInfoFromHost();
 }
 
@@ -356,8 +337,6 @@ void JuceDemoPluginAudioProcessor::applyDelay(AudioBuffer<FloatType>& buffer, Au
 }
 
 
-        
-        
 void JuceDemoPluginAudioProcessor::updateCurrentTimeInfoFromHost()
 {
 	if (AudioPlayHead* ph = getPlayHead())
@@ -375,15 +354,15 @@ void JuceDemoPluginAudioProcessor::updateCurrentTimeInfoFromHost()
 	lastPosInfo.resetToDefault();
 }
 
+
 //==============================================================================
 AudioProcessorEditor* JuceDemoPluginAudioProcessor::createEditor()
 {
-	return new JuceDemoPluginAudioProcessorEditor(*this);
+    return new JuceDemoPluginAudioProcessorEditor(*this);
 }
 
 //==============================================================================
-
-
+// Plugin Instantiation Settings
 void JuceDemoPluginAudioProcessor::getStateInformation(MemoryBlock& destData)
 {
 	// You should use this method to store your parameters in the memory block.
