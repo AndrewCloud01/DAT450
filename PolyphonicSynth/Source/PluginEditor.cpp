@@ -60,7 +60,6 @@ JuceDemoPluginAudioProcessorEditor::JuceDemoPluginAudioProcessorEditor(JuceDemoP
 	gainLabel(String(), "Gain:"),                                                          // Throughput Level
 	delayLabel(String(), "Delay:")                                                         // Delay
 {
-    
     // MIDI Device Input List
     addAndMakeVisible (midiInputListLabel);
     midiInputListLabel.setText ("MIDI Input:", dontSendNotification);
@@ -158,6 +157,7 @@ void JuceDemoPluginAudioProcessorEditor::resized()
     
     // Gain Pot Location
 	gainSlider->setBounds(sliderArea.removeFromLeft(jmin(160, sliderArea.getWidth() / 2)));
+    
     // Delay Pot Location
 	delaySlider->setBounds(sliderArea.removeFromLeft(jmin(180, sliderArea.getWidth())));
     
@@ -167,12 +167,10 @@ void JuceDemoPluginAudioProcessorEditor::resized()
     midiMessagesBox.setBounds (r.removeFromBottom(20));           // TextEditor for MIDI Display
     midiMessagesBox.setBounds (r.reduced (2));
     
-
 	getProcessor().lastUIWidth = getWidth();
 	getProcessor().lastUIHeight = getHeight();
 }
 //==============================================================================
-
 // BEGIN MIDI DISPLAY METHODS
 
  // These methods handle callbacks from the midi device
@@ -215,6 +213,7 @@ void JuceDemoPluginAudioProcessorEditor::logMessage (const String& m)
     midiMessagesBox.moveCaretToEnd();
     midiMessagesBox.insertTextAtCaret (m + newLine);
 }
+
 // Compile MIDI Message Info and Log
 void JuceDemoPluginAudioProcessorEditor::addMessageToList (const MidiMessage& message, const String& source)
 {
