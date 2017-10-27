@@ -15,7 +15,6 @@
 #include <iostream>
 using namespace std;
 
-
 // OTHER LOOK AND FEEL
 class OtherLookAndFeel : public LookAndFeel_V4
 {
