@@ -71,11 +71,17 @@ public:
 private:
     // GUI Components
     AudioDeviceManager deviceManager;                       // Audio Devices
-    ComboBox midiInputList;                                 // MIDI Input List (Controllers
+    ComboBox midiInputList;									// MIDI Input List (Controllers
     int lastInputIndex;
     bool isAddingFromMidiInput;                             // Checks if from MIDI Controller
     
 	class ParameterSlider;                                  // Pots
+
+	ComboBox waveformSelection;
+	Label waveformLabel;
+
+	ComboBox filterSelection;
+	Label filterLabel;
 
     TextEditor midiMessagesBox;                             // For MIDI Display
     
@@ -83,6 +89,7 @@ private:
 	MidiKeyboardComponent midiKeyboard;                     // For MIDI Controller
 	Label midiInputListLabel, gainLabel, delayLabel;        // Slider Labels
     ScopedPointer<ParameterSlider> gainSlider, delaySlider; // Slideres
+
     
 
 	//==============================================================================

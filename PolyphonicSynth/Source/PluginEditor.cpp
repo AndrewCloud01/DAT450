@@ -71,7 +71,24 @@ JuceDemoPluginAudioProcessorEditor::JuceDemoPluginAudioProcessorEditor(JuceDemoP
     const StringArray midiInputs (MidiInput::getDevices());
     midiInputList.addItemList (midiInputs, 1);
     midiInputList.addListener (this);
-    
+
+	addAndMakeVisible(waveformSelection);
+	waveformLabel.setText("Choose Waveform", dontSendNotification);
+	waveformLabel.attachToComponent(&waveformSelection, true);
+	waveformSelection.addItem("Sine", 1);
+	waveformSelection.addItem("Triangle", 2);
+	waveformSelection.addItem("Square", 3);
+	waveformSelection.setSelectedId(1);
+
+	addAndMakeVisible(filterSelection);
+	filterLabel.setText("Choose Filter", dontSendNotification);
+	filterLabel.attachToComponent(&filterSelection, true);
+	filterSelection.addItem("none", 1);
+	filterSelection.addItem("Low Pass", 2);
+	filterSelection.addItem("High Pass", 3);
+	filterSelection.addItem("Band Pass", 4);
+	filterSelection.setSelectedId(1);
+
     // find the first enabled device and use that by default
     for (int i = 0; i < midiInputs.size(); ++i)
     {
@@ -161,8 +178,20 @@ void JuceDemoPluginAudioProcessorEditor::resized()
     // Delay Pot Location
 	delaySlider->setBounds(sliderArea.removeFromLeft(jmin(180, sliderArea.getWidth())));
     
-    r.removeFromTop(10);    // Space
-    
+    // r.removeFromTop(10);    // Space
+   
+	// Rectangle<int> waveformArea(r.removeFromTop(30));
+	
+	
+
+	Rectangle<int> filterArea(r.removeFromTop(30));
+	filterSelection.setBounds(filterArea.removeFromRight(filterArea.getWidth() / 2-100));
+	
+	// Rectangle<int> waveformArea(r.removeFromLeft(r.getWidth() / 2));
+	// waveformSelection.setBounds(waveformArea.removeFromRight(jmin(160, waveformArea.getWidth() / 2)));
+
+	waveformSelection.setBounds(filterArea.removeFromRight(filterArea.getWidth()-100).removeFromLeft(filterArea.getWidth()/2-10));
+
     // MIDI Display Textbox
     midiMessagesBox.setBounds (r.removeFromBottom(20));           // TextEditor for MIDI Display
     midiMessagesBox.setBounds (r.reduced (2));
