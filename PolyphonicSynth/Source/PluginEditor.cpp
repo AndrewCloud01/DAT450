@@ -60,6 +60,7 @@ JuceDemoPluginAudioProcessorEditor::JuceDemoPluginAudioProcessorEditor(JuceDemoP
 	gainLabel(String(), "Gain:"),                                                          // Throughput Level
 	delayLabel(String(), "Delay:")                                                         // Delay
 {
+    //owner.initialiseSynth(1);
     
     // MIDI Device Input List
     addAndMakeVisible (midiInputListLabel);
@@ -102,7 +103,6 @@ JuceDemoPluginAudioProcessorEditor::JuceDemoPluginAudioProcessorEditor(JuceDemoP
 
 	// ON-SCREEN MIDI KEYBOARD COMPONENT
 	//addAndMakeVisible(midiKeyboard);
-    
     midiKeyboardState.addListener(this);    // Listen for MIDI Controller Input
 
     //MIDI Display
@@ -118,12 +118,22 @@ JuceDemoPluginAudioProcessorEditor::JuceDemoPluginAudioProcessorEditor(JuceDemoP
     midiMessagesBox.setColour (TextEditor::shadowColourId, Colour (0x16000000));
     // End MIDI display
     
+    // BEGIN Toggle Polyphony
+    addAndMakeVisible(Poly);
+    Poly.setButtonText ("Polyphony Enabled");
+    Poly.setToggleState (true, dontSendNotification);       // Auto On
+    // Works on buttonClicked()
+    Poly.addListener(this);
+    
+    // END Toggle Polyphony
+    
     // set resize limits for this plug-in
 	//setResizeLimits(400, 200, 800, 300);  // Old Resize
     setResizeLimits(800, 400, 800, 500);
 
 	// set our component's initial size to be the last one that was stored in the filter's settings
 	setSize(owner.lastUIWidth, owner.lastUIHeight);
+    setLookAndFeel(&otherLookAndFeel);
 }
 
 JuceDemoPluginAudioProcessorEditor::~JuceDemoPluginAudioProcessorEditor()
@@ -131,6 +141,7 @@ JuceDemoPluginAudioProcessorEditor::~JuceDemoPluginAudioProcessorEditor()
     midiKeyboardState.removeListener (this);
     deviceManager.removeMidiInputCallback (MidiInput::getDevices()[midiInputList.getSelectedItemIndex()], this);
     midiInputList.removeListener (this);
+    Poly.removeListener(this);
 }
 
 //==============================================================================
@@ -158,8 +169,11 @@ void JuceDemoPluginAudioProcessorEditor::resized()
     
     // Gain Pot Location
 	gainSlider->setBounds(sliderArea.removeFromLeft(jmin(160, sliderArea.getWidth() / 2)));
+    
     // Delay Pot Location
 	delaySlider->setBounds(sliderArea.removeFromLeft(jmin(180, sliderArea.getWidth())));
+    
+    Poly.setBounds(sliderArea.removeFromLeft(jmin(200, sliderArea.getWidth())));
     
     r.removeFromTop(10);    // Space
     
@@ -167,12 +181,29 @@ void JuceDemoPluginAudioProcessorEditor::resized()
     midiMessagesBox.setBounds (r.removeFromBottom(20));           // TextEditor for MIDI Display
     midiMessagesBox.setBounds (r.reduced (2));
     
-
 	getProcessor().lastUIWidth = getWidth();
 	getProcessor().lastUIHeight = getHeight();
 }
-//==============================================================================
 
+void JuceDemoPluginAudioProcessorEditor::buttonClicked (Button* button) // Poly Toggle Button
+{
+    // Get button state
+    int buttonState = button->getToggleState();
+    
+    // Check Button State and change synth accordingly
+    if (buttonState == 0)
+    {
+        // The button is untoggled
+        this->getProcessor().initialiseSynth(1);
+    }
+    else
+    {
+        // Is toggled
+        this->getProcessor().initialiseSynth(8);
+    }
+    
+}
+//==============================================================================
 // BEGIN MIDI DISPLAY METHODS
 
  // These methods handle callbacks from the midi device
@@ -215,6 +246,7 @@ void JuceDemoPluginAudioProcessorEditor::logMessage (const String& m)
     midiMessagesBox.moveCaretToEnd();
     midiMessagesBox.insertTextAtCaret (m + newLine);
 }
+
 // Compile MIDI Message Info and Log
 void JuceDemoPluginAudioProcessorEditor::addMessageToList (const MidiMessage& message, const String& source)
 {
