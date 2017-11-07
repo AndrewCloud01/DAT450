@@ -66,14 +66,14 @@ public:
 			// start a tail-off by setting this flag. The render callback will pick up on
 			// this and do a fade out, calling clearCurrentNote() when it's finished.
 
-			if (tailOff == 0.0) // we only need to begin a tail-off if it's not already doing so - the
+			if (tailOff == 0) // we only need to begin a tail-off if it's not already doing so - the
 								// stopNote method could be called more than once.
 				tailOff = 1.0;
 		}
 		else
 		{
 			// we're being told to stop playing immediately, so reset everything..
-
+            //tailOff = 1.0;
 			clearCurrentNote();
 			angleDelta = 0.0;
 		}
@@ -164,20 +164,24 @@ JuceDemoPluginAudioProcessor::JuceDemoPluginAudioProcessor()
 	// so that we can easily access them later, but the base class will take care of
 	// deleting them for us.
 	addParameter(gainParam = new AudioParameterFloat("gain", "Gain", 0.0f, 1.0f, 0.9f));
-	addParameter(delayParam = new AudioParameterFloat("delay", "Delay Feedback", 0.0f, 1.0f, 0.5f));
+    addParameter(delayParam = new AudioParameterFloat("delay", "Delay Feedback", 0.0f, 0.5f, 0.5f));    // 0.5f -> 1.0f
 
-	initialiseSynth();
+	initialiseSynth(8); // Start with Polyphony
 }
 
 JuceDemoPluginAudioProcessor::~JuceDemoPluginAudioProcessor()
 {
 }
 
-void JuceDemoPluginAudioProcessor::initialiseSynth()
+// Now a public method
+void JuceDemoPluginAudioProcessor::initialiseSynth(int voices)
 {
-	const int numVoices = 8;                // 8 voice synth
-                                                                                // Choose what waveform
-                                                                                // for the synth
+    // Reset the Synth
+    synth.clearSounds();
+    synth.clearVoices();
+    
+    // Apply the number of voices
+	int numVoices = voices;                // 8 voice synth
     
 	// Add some voices...
 	for (int i = numVoices; --i >= 0;)
@@ -185,7 +189,6 @@ void JuceDemoPluginAudioProcessor::initialiseSynth()
         // synth.addVoice(new SquareWaveVoice());
 
 	// ..and give the synth a sound to play
-    
 	synth.addSound(new SineWaveSound());                              // SYNTH PLAY
     
     // BEGIN PITCHBEND TEST
@@ -196,7 +199,7 @@ void JuceDemoPluginAudioProcessor::initialiseSynth()
     // All notes
     // synth.enableLegacyMode(24);
     // synth.setVoiceStealingEnabled(false);
-    //visualiserInstrument.enableLegacyMode(24);
+    // visualiserInstrument.enableLegacyMode(24);
    
 }
 

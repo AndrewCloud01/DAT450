@@ -88,6 +88,8 @@ public:
 	AudioParameterFloat* gainParam = nullptr;
 	AudioParameterFloat* delayParam = nullptr;
 
+    void initialiseSynth(int voices);
+    
 private:
 	//==============================================================================
 	template <typename FloatType>
@@ -104,7 +106,7 @@ private:
 
 	Synthesiser synth;
 
-	void initialiseSynth();
+	//void initialiseSynth(int voices);
 	void updateCurrentTimeInfoFromHost();
 	static BusesProperties getBusesProperties();
 
