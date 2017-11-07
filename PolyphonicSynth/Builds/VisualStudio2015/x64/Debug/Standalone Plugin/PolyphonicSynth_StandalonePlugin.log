@@ -1,3 +1,2 @@
-﻿  include_juce_audio_plugin_client_Standalone.cpp
-  PolyphonicSynth_StandalonePlugin.vcxproj -> C:\JUCE\Projects\DAT450\PolyphonicSynth\Builds\VisualStudio2015\x64\Debug\Standalone Plugin\PolyphonicSynth.exe
+﻿  PolyphonicSynth_StandalonePlugin.vcxproj -> C:\JUCE\Projects\DAT450\PolyphonicSynth\Builds\VisualStudio2015\x64\Debug\Standalone Plugin\PolyphonicSynth.exe
   PolyphonicSynth_StandalonePlugin.vcxproj -> x64\Debug\Standalone Plugin\\PolyphonicSynth.pdb (Full PDB)

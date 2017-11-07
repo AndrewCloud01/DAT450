@@ -106,10 +106,8 @@ public:
 private:
     // Advanced GUI Components (BTS)
     AudioDeviceManager deviceManager;                       // Audio Devices
-<<<<<<< HEAD
     ComboBox midiInputList;									// MIDI Input List (Controllers
-=======
->>>>>>> Sprint-Review
+
     int lastInputIndex;
     bool isAddingFromMidiInput;                             // Checks if from MIDI Controller
     MidiKeyboardState midiKeyboardState;                    // For MIDI Input
@@ -117,7 +115,6 @@ private:
     
     // Front-End
 	class ParameterSlider;                                  // Pots
-<<<<<<< HEAD
 
 	ComboBox waveformSelection;
 	Label waveformLabel;
@@ -125,24 +122,20 @@ private:
 	ComboBox filterSelection;
 	Label filterLabel;
 
-=======
-    ComboBox midiInputList;                                 // MIDI Input List (Controllers)
->>>>>>> Sprint-Review
+	ScopedPointer<ParameterSlider> qSlider;
+	Label qLabel;
+
+	ScopedPointer<ParameterSlider> freqSlider;
+	Label freqLabel;
+
     TextEditor midiMessagesBox;                             // For MIDI Display
     Label midiInputListLabel, gainLabel, delayLabel;        // Slider Labels
     ScopedPointer<ParameterSlider> gainSlider, delaySlider; // Sliders
     ToggleButton Poly;                                      // Toggle for Poly or Mono Synth
-    
-<<<<<<< HEAD
-    MidiKeyboardState midiKeyboardState;                    // For MIDI Input
-	MidiKeyboardComponent midiKeyboard;                     // For MIDI Controller
-	Label midiInputListLabel, gainLabel, delayLabel;        // Slider Labels
-    ScopedPointer<ParameterSlider> gainSlider, delaySlider; // Slideres
 
-=======
     // Custom Pots
     OtherLookAndFeel otherLookAndFeel;
->>>>>>> Sprint-Review
+
     
 	//==============================================================================
 	JuceDemoPluginAudioProcessor& getProcessor() const

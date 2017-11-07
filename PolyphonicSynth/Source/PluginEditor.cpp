@@ -55,10 +55,12 @@ public:
 
 JuceDemoPluginAudioProcessorEditor::JuceDemoPluginAudioProcessorEditor(JuceDemoPluginAudioProcessor& owner)
 	: AudioProcessorEditor(owner),
-    //midiKeyboard(owner.keyboardState, MidiKeyboardComponent::horizontalKeyboard),        // Onscreen MIDI Keyboard
-    midiKeyboard(midiKeyboardState, MidiKeyboardComponent::horizontalKeyboard),            // MIDI Controller
+	//midiKeyboard(owner.keyboardState, MidiKeyboardComponent::horizontalKeyboard),        // Onscreen MIDI Keyboard
+	midiKeyboard(midiKeyboardState, MidiKeyboardComponent::horizontalKeyboard),            // MIDI Controller
 	gainLabel(String(), "Gain:"),                                                          // Throughput Level
-	delayLabel(String(), "Delay:")                                                         // Delay
+	delayLabel(String(), "Delay:"),                                                        // Delay
+	qLabel(String(), "Q:"),
+	freqLabel(String(), "Frequency;")
 {
     //owner.initialiseSynth(1);
     
@@ -117,6 +119,18 @@ JuceDemoPluginAudioProcessorEditor::JuceDemoPluginAudioProcessorEditor(JuceDemoP
 	delaySlider->setSliderStyle(Slider::Rotary);                                      // Pot Slider
     delayLabel.attachToComponent(delaySlider, false);
     delayLabel.setFont(Font(11.0f));
+
+	// Q SLIDER AND LABEL
+	addAndMakeVisible(qSlider = new ParameterSlider(*owner.delayParam));          // Q slider
+	qSlider->setSliderStyle(Slider::Rotary);                                      // Pot Slider
+	qLabel.attachToComponent(qSlider, false);
+	qLabel.setFont(Font(11.0f));
+
+	// FREQUENCY SLIDER AND LABEL
+	addAndMakeVisible(freqSlider = new ParameterSlider(*owner.delayParam));          // Q slider
+	freqSlider->setSliderStyle(Slider::Rotary);                                      // Pot Slider
+	freqLabel.attachToComponent(freqSlider, false);
+	freqLabel.setFont(Font(11.0f));
 
 	// ON-SCREEN MIDI KEYBOARD COMPONENT
 	//addAndMakeVisible(midiKeyboard);
@@ -188,29 +202,29 @@ void JuceDemoPluginAudioProcessorEditor::resized()
 	gainSlider->setBounds(sliderArea.removeFromLeft(jmin(160, sliderArea.getWidth() / 2)));
     
     // Delay Pot Location
-	delaySlider->setBounds(sliderArea.removeFromLeft(jmin(180, sliderArea.getWidth())));
-    
-<<<<<<< HEAD
-    // r.removeFromTop(10);    // Space
-   
-	// Rectangle<int> waveformArea(r.removeFromTop(30));
-	
-	
+	delaySlider->setBounds(sliderArea.removeFromLeft(jmin(180, sliderArea.getWidth()/ 2)));
 
+	qSlider->setBounds(sliderArea.removeFromLeft(jmin(200, sliderArea.getWidth() /2 )));
+
+	freqSlider->setBounds(sliderArea.removeFromLeft(jmin(220, sliderArea.getWidth()/2)));
+    
+    r.removeFromTop(10);    // Space
+	
+	Rectangle<int> polyToggle(r.removeFromTop(10).expanded(6));
+	Poly.setBounds(polyToggle.removeFromLeft(jmin(200, polyToggle.getWidth())));
+
+	r.removeFromTop(10);    // Space
+	
 	Rectangle<int> filterArea(r.removeFromTop(30));
 	filterSelection.setBounds(filterArea.removeFromRight(filterArea.getWidth() / 2-100));
 	
-	// Rectangle<int> waveformArea(r.removeFromLeft(r.getWidth() / 2));
-	// waveformSelection.setBounds(waveformArea.removeFromRight(jmin(160, waveformArea.getWidth() / 2)));
 
 	waveformSelection.setBounds(filterArea.removeFromRight(filterArea.getWidth()-100).removeFromLeft(filterArea.getWidth()/2-10));
 
-=======
-    Poly.setBounds(sliderArea.removeFromLeft(jmin(200, sliderArea.getWidth())));
+    
     
     r.removeFromTop(10);    // Space
     
->>>>>>> Sprint-Review
     // MIDI Display Textbox
     midiMessagesBox.setBounds (r.removeFromBottom(20));           // TextEditor for MIDI Display
     midiMessagesBox.setBounds (r.reduced (2));
