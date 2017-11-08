@@ -1,2 +1,4 @@
-﻿  PolyphonicSynth_StandalonePlugin.vcxproj -> C:\JUCE\Projects\DAT450\PolyphonicSynth\Builds\VisualStudio2015\x64\Debug\Standalone Plugin\PolyphonicSynth.exe
+﻿  include_juce_audio_plugin_client_Standalone.cpp
+  LINK : C:\JUCE\Projects\DAT450\PolyphonicSynth\Builds\VisualStudio2015\x64\Debug\Standalone Plugin\\PolyphonicSynth.exe not found or not built by the last incremental link; performing full link
+  PolyphonicSynth_StandalonePlugin.vcxproj -> C:\JUCE\Projects\DAT450\PolyphonicSynth\Builds\VisualStudio2015\x64\Debug\Standalone Plugin\PolyphonicSynth.exe
   PolyphonicSynth_StandalonePlugin.vcxproj -> x64\Debug\Standalone Plugin\\PolyphonicSynth.pdb (Full PDB)
