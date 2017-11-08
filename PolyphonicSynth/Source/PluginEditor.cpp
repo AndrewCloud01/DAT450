@@ -204,9 +204,9 @@ void JuceDemoPluginAudioProcessorEditor::resized()
     // Delay Pot Location
 	delaySlider->setBounds(sliderArea.removeFromLeft(jmin(180, sliderArea.getWidth()/ 2)));
 
-	qSlider->setBounds(sliderArea.removeFromLeft(jmin(200, sliderArea.getWidth() /2 )));
+	qSlider->setBounds(sliderArea.removeFromLeft(jmin(220, sliderArea.getWidth() /2 )));
 
-	freqSlider->setBounds(sliderArea.removeFromLeft(jmin(220, sliderArea.getWidth()/2)));
+	freqSlider->setBounds(sliderArea.removeFromLeft(jmin(240, sliderArea.getWidth()/2)));
     
     r.removeFromTop(10);    // Space
 	
