@@ -55,10 +55,30 @@ public:
 		double cyclesPerSample = cyclesPerSecond / getSampleRate();                     // MIDI Controller octave controller works
         
         // PLAY SINE WAVE
-		angleDelta = cyclesPerSample * 2.0 * double_Pi;           // (2pi*f)
+		//angleDelta = cyclesPerSample * 2.0 * double_Pi;           // (2pi*f)
         // PLAY SINE WAVE
+        
+        angleDelta = sinFunc(cyclesPerSample);
+  
+        
 	}
-
+    
+    
+    float sinFunc(float pos)
+    {
+        return sin(pos*2*M_PI);
+    }
+    
+    float sawFunc(float pos)
+    {
+        return pos*2-1;
+    }
+    
+    float triangleFunc(float pos)
+    {
+        return 1-fabs(pos-0.5)*4;
+    }
+    
 	void stopNote(float /*velocity*/, bool allowTailOff) override           // Stop Note
 	{
 		if (allowTailOff)
