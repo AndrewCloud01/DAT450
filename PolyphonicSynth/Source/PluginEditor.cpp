@@ -62,12 +62,10 @@ JuceDemoPluginAudioProcessorEditor::JuceDemoPluginAudioProcessorEditor(JuceDemoP
 	qLabel(String(), "Q:"),
 	freqLabel(String(), "Frequency;")
 {
-<<<<<<< HEAD
-=======
+
     //owner.initialiseSynth(1);
     
 	//==============================================================================
->>>>>>> GabrielBranch2
     // MIDI Device Input List
     addAndMakeVisible (midiInputListLabel);
     midiInputListLabel.setText ("MIDI Input:", dontSendNotification);
