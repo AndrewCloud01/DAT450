@@ -64,6 +64,7 @@ JuceDemoPluginAudioProcessorEditor::JuceDemoPluginAudioProcessorEditor(JuceDemoP
 {
     //owner.initialiseSynth(1);
     
+	//==============================================================================
     // MIDI Device Input List
     addAndMakeVisible (midiInputListLabel);
     midiInputListLabel.setText ("MIDI Input:", dontSendNotification);
@@ -75,6 +76,24 @@ JuceDemoPluginAudioProcessorEditor::JuceDemoPluginAudioProcessorEditor(JuceDemoP
     midiInputList.addItemList (midiInputs, 1);
     midiInputList.addListener (this);
 
+	// find the first enabled device and use that by default
+	for (int i = 0; i < midiInputs.size(); ++i)
+	{
+		if (deviceManager.isMidiInputEnabled(midiInputs[i]))
+		{
+			setMidiInput(i);
+			break;
+		}
+	}
+
+	// if no enabled devices were found just use the first one in the list
+	if (midiInputList.getSelectedId() == 0)
+	{
+		setMidiInput(0);
+	}
+
+	//==============================================================================
+	// ComboBox Label and Item Definition
 	addAndMakeVisible(waveformSelection);
 	waveformLabel.setText("Choose Waveform", dontSendNotification);
 	waveformLabel.attachToComponent(&waveformSelection, true);
@@ -92,22 +111,7 @@ JuceDemoPluginAudioProcessorEditor::JuceDemoPluginAudioProcessorEditor(JuceDemoP
 	filterSelection.addItem("Band Pass", 4);
 	filterSelection.setSelectedId(1);
 
-    // find the first enabled device and use that by default
-    for (int i = 0; i < midiInputs.size(); ++i)
-    {
-        if (deviceManager.isMidiInputEnabled (midiInputs[i]))
-        {
-            setMidiInput (i);
-            break;
-        }
-    }
-    
-    // if no enabled devices were found just use the first one in the list
-    if (midiInputList.getSelectedId() == 0)
-    {
-        setMidiInput (0);
-    }
-    
+	//==============================================================================
     // GAIN SLIDER AND LABEL
 	addAndMakeVisible(gainSlider = new ParameterSlider(*owner.gainParam));              // Gain slider
 	gainSlider->setSliderStyle(Slider::Rotary);                                         // Pot Slider
@@ -132,10 +136,12 @@ JuceDemoPluginAudioProcessorEditor::JuceDemoPluginAudioProcessorEditor(JuceDemoP
 	freqLabel.attachToComponent(freqSlider, false);
 	freqLabel.setFont(Font(11.0f));
 
+	//==============================================================================
 	// ON-SCREEN MIDI KEYBOARD COMPONENT
 	//addAndMakeVisible(midiKeyboard);
     midiKeyboardState.addListener(this);    // Listen for MIDI Controller Input
-
+	
+	//==============================================================================
     //MIDI Display
     addAndMakeVisible (midiMessagesBox);
     midiMessagesBox.setMultiLine (true);
@@ -149,6 +155,7 @@ JuceDemoPluginAudioProcessorEditor::JuceDemoPluginAudioProcessorEditor(JuceDemoP
     midiMessagesBox.setColour (TextEditor::shadowColourId, Colour (0x16000000));
     // End MIDI display
     
+	//==============================================================================
     // BEGIN Toggle Polyphony
     addAndMakeVisible(Poly);
     Poly.setButtonText ("Polyphony Enabled");
@@ -158,6 +165,7 @@ JuceDemoPluginAudioProcessorEditor::JuceDemoPluginAudioProcessorEditor(JuceDemoP
     
     // END Toggle Polyphony
     
+	//==============================================================================
     // set resize limits for this plug-in
 	//setResizeLimits(400, 200, 800, 300);  // Old Resize
     setResizeLimits(800, 400, 800, 500);
@@ -182,49 +190,62 @@ void JuceDemoPluginAudioProcessorEditor::paint(Graphics& g)
 	g.fillAll();
 }
 
+//==============================================================================
 void JuceDemoPluginAudioProcessorEditor::resized()
 {
+	//==============================================================================
 	// This lays out our child components...
-
 	Rectangle<int> r(getLocalBounds().reduced(8));
     
+	//==============================================================================
     // MIDI Display
     midiInputList.setBounds (r.removeFromTop (35).removeFromRight (getWidth() - 75).reduced(4));  //Flush Left
     
     // ON-SCREEN MIDI KEYBOARD
 	//midiKeyboard.setBounds(r.removeFromTop(60).reduced(4));
     
-	r.removeFromTop(25);    // Space
-    
-	Rectangle<int> sliderArea(r.removeFromTop(40).expanded(6)); // Pot Areas (Gain and Delay)
-    
-    // Gain Pot Location
-	gainSlider->setBounds(sliderArea.removeFromLeft(jmin(160, sliderArea.getWidth() / 2)));
-    
-    // Delay Pot Location
-	delaySlider->setBounds(sliderArea.removeFromLeft(jmin(180, sliderArea.getWidth()/ 2)));
-
-	qSlider->setBounds(sliderArea.removeFromLeft(jmin(220, sliderArea.getWidth() /2 )));
-
-	freqSlider->setBounds(sliderArea.removeFromLeft(jmin(240, sliderArea.getWidth()/2)));
-    
-    r.removeFromTop(10);    // Space
-	
+	r.removeFromTop(5);    // Space
+	//==============================================================================
+	// Poly/Mono toggle
 	Rectangle<int> polyToggle(r.removeFromTop(10).expanded(6));
 	Poly.setBounds(polyToggle.removeFromLeft(jmin(200, polyToggle.getWidth())));
-
-	r.removeFromTop(10);    // Space
 	
-	Rectangle<int> filterArea(r.removeFromTop(30));
-	filterSelection.setBounds(filterArea.removeFromRight(filterArea.getWidth() / 2-100));
+	r.removeFromTop(40);    // Space
 	
-
-	waveformSelection.setBounds(filterArea.removeFromRight(filterArea.getWidth()-100).removeFromLeft(filterArea.getWidth()/2-10));
-
+	//==============================================================================
+	// Pot Areas 
+	Rectangle<int> sliderArea(r.removeFromTop(40).expanded(10)); 
+  
+	sliderArea.removeFromLeft(10); // space from left
     
+	// Gain Pot Location
+	gainSlider->setBounds(sliderArea.removeFromLeft(sliderArea.getWidth() / 4));
+    
+    // Delay Pot Location
+	delaySlider->setBounds(sliderArea.removeFromLeft(sliderArea.getWidth() /3));
+
+	// Q Pot Location
+	qSlider->setBounds(sliderArea.removeFromLeft(sliderArea.getWidth()/2));
+
+	// Frequency Pot Location
+	freqSlider->setBounds(sliderArea.removeFromLeft(sliderArea.getWidth()));
+    
+    r.removeFromTop(20);    // Space
+	
+	//==============================================================================
+	// ComboBox Area
+	Rectangle<int> filterArea(r.removeFromTop(30));
+
+	// Waveform ComboBox Area
+	waveformSelection.setBounds(filterArea.removeFromLeft(100));
+	waveformSelection.setBounds(filterArea.removeFromLeft(filterArea.getWidth()/2 - 50));
+	
+	// Filter ComboBox Area
+	filterSelection.setBounds(filterArea.removeFromLeft(100));
+	filterSelection.setBounds(filterArea.removeFromLeft(filterArea.getWidth()));
     
     r.removeFromTop(10);    // Space
-    
+	//==============================================================================
     // MIDI Display Textbox
     midiMessagesBox.setBounds (r.removeFromBottom(20));           // TextEditor for MIDI Display
     midiMessagesBox.setBounds (r.reduced (2));
