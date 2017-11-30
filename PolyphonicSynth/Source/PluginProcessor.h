@@ -105,7 +105,7 @@ private:
 	int delayPosition = 0;
 
 	Synthesiser synth;
-
+    
 	//void initialiseSynth(int voices);
 	void updateCurrentTimeInfoFromHost();
 	static BusesProperties getBusesProperties();

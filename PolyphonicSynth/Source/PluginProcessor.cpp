@@ -16,6 +16,54 @@ using namespace std;
 
 AudioProcessor* JUCE_CALLTYPE createPluginFilter();
 
+//==============================================================================
+class Osc
+{
+public:
+    double frequency, phase, output;
+    
+    Osc()
+    {
+        phase = 0.0;
+    }
+    
+    double sinewave(double freq, double sampleRate)
+    {
+        output = sin(phase*(2*double_Pi));
+        if(phase>=1.0) phase -=1.0;
+        phase += (1./(sampleRate / freq));
+        return output;
+    }
+    
+    double square (double freq, double sampleRate)
+    {
+        if(phase<0.5) output =-1;
+        if(phase>5.0) output =1;
+        if(phase>= 1.0) phase -=1.0;
+        phase += (1./(sampleRate/freq));
+        return output;
+    }
+    
+    double sawtooth(double freq, double sampleRate)
+    {
+        output = phase;
+        if(phase>=1.0) phase-=2.0;
+        phase += (1./(sampleRate/freq));
+        return output;
+    }
+    
+    double getFrequency()
+    {
+        return this->frequency;
+    }
+    
+    void setFrequency(double freq)
+    {
+        frequency = freq;
+    }
+
+    
+};
 
 //==============================================================================
 /** A demo synth sound that's just a basic sine wave.. */
@@ -28,11 +76,15 @@ public:
 	bool appliesToChannel(int /*midiChannel*/) override { return true; }
 };
 
+
+
 //==============================================================================
 /** A simple demo synth voice that just plays a sine wave.. */
 class SineWaveVoice : public SynthesiserVoice
 {
 public:
+    double frequency;
+    Osc osc1;
 	SineWaveVoice()
 	{
 	}
@@ -50,34 +102,24 @@ public:
 		level = velocity * 0.15;
 		tailOff = 0.0;
         
+        
+        //frequency = MidiMessage::getMidiNoteInHertz(midiNoteNumber);
 		double cyclesPerSecond = MidiMessage::getMidiNoteInHertz(midiNoteNumber);       // MIDI to Note - Keyboard keys are off
         
 		double cyclesPerSample = cyclesPerSecond / getSampleRate();                     // MIDI Controller octave controller works
         
+        
+        //angleDelta = square(cyclesPerSecond, getSampleRate());
+        
         // PLAY SINE WAVE
-		//angleDelta = cyclesPerSample * 2.0 * double_Pi;           // (2pi*f)
+		angleDelta = cyclesPerSample * 2.0 * double_Pi;           // (2pi*f)
         // PLAY SINE WAVE
         
-        angleDelta = sinFunc(cyclesPerSample);
-  
         
 	}
     
     
-    float sinFunc(float pos)
-    {
-        return sin(pos*2*M_PI);
-    }
     
-    float sawFunc(float pos)
-    {
-        return pos*2-1;
-    }
-    
-    float triangleFunc(float pos)
-    {
-        return 1-fabs(pos-0.5)*4;
-    }
     
 	void stopNote(float /*velocity*/, bool allowTailOff) override           // Stop Note
 	{
@@ -118,11 +160,13 @@ public:
 
 	void renderNextBlock(AudioBuffer<float>& outputBuffer, int startSample, int numSamples) override
 	{
+     
 		processBlock(outputBuffer, startSample, numSamples);
 	}
 
 	void renderNextBlock(AudioBuffer<double>& outputBuffer, int startSample, int numSamples) override
 	{
+
 		processBlock(outputBuffer, startSample, numSamples);
 	}
 
@@ -138,8 +182,9 @@ private:
 				{
 					auto currentSample = static_cast<FloatType> (std::sin(currentAngle) * level * tailOff);
 
-					for (int i = outputBuffer.getNumChannels(); --i >= 0;)
-						outputBuffer.addSample(i, startSample, currentSample);
+                    for (int i = outputBuffer.getNumChannels(); --i >= 0;)
+                    outputBuffer.addSample(i, startSample, currentSample);
+                    
 
 					currentAngle += angleDelta;
 					++startSample;
@@ -163,6 +208,7 @@ private:
 
 					for (int i = outputBuffer.getNumChannels(); --i >= 0;)
 						outputBuffer.addSample(i, startSample, currentSample);
+                    
 
 					currentAngle += angleDelta;
 					++startSample;
@@ -196,6 +242,7 @@ JuceDemoPluginAudioProcessor::~JuceDemoPluginAudioProcessor()
 // Now a public method
 void JuceDemoPluginAudioProcessor::initialiseSynth(int voices)
 {
+    
     // Reset the Synth
     synth.clearSounds();
     synth.clearVoices();
