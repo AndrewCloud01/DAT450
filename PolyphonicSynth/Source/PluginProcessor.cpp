@@ -16,145 +16,607 @@ using namespace std;
 
 AudioProcessor* JUCE_CALLTYPE createPluginFilter();
 
-
 //==============================================================================
-/** A demo synth sound that's just a basic sine wave.. */
-class SineWaveSound : public SynthesiserSound
+// Sine Wave
+class SineWave : public MPESynthesiserVoice
 {
 public:
-	SineWaveSound() {}
+    //==============================================================================
+    SineWave()
+    : phase (0.0), phaseDelta (0.0), tailOff (0.0)
+    {
+    }
 
-	bool appliesToNote(int /*midiNoteNumber*/) override { return true; }
-	bool appliesToChannel(int /*midiChannel*/) override { return true; }
-};
-
-//==============================================================================
-/** A simple demo synth voice that just plays a sine wave.. */
-class SineWaveVoice : public SynthesiserVoice
-{
-public:
-	SineWaveVoice()
-	{
-	}
-
-	bool canPlaySound(SynthesiserSound* sound) override
-	{
-		return dynamic_cast<SineWaveSound*> (sound) != nullptr;
-	}
-
-	void startNote(int midiNoteNumber, float velocity,                      // Play Note
-		SynthesiserSound* /*sound*/,
-		int /*currentPitchWheelPosition*/) override                         // MidiMessage::getPitchWheeValue()
-	{
-		currentAngle = 0.0;
-		level = velocity * 0.15;
-		tailOff = 0.0;
+    //==============================================================================
+    void noteStarted() override
+    {
+        jassert (currentlyPlayingNote.isValid());
+        jassert (currentlyPlayingNote.keyState == MPENote::keyDown
+                 || currentlyPlayingNote.keyState == MPENote::keyDownAndSustained);
         
-		double cyclesPerSecond = MidiMessage::getMidiNoteInHertz(midiNoteNumber);       // MIDI to Note - Keyboard keys are off
+        // get data from the current MPENote
+        level.setValue (currentlyPlayingNote.pressure.asUnsignedFloat());
+        frequency.setValue (currentlyPlayingNote.getFrequencyInHertz());
+        timbre.setValue (currentlyPlayingNote.timbre.asUnsignedFloat());
         
-		double cyclesPerSample = cyclesPerSecond / getSampleRate();                     // MIDI Controller octave controller works
+        phase = 0.0;
+        const double cyclesPerSample = frequency.getNextValue() / currentSampleRate;
+        phaseDelta = 2.0 * double_Pi * cyclesPerSample;
         
-        // PLAY SINE WAVE
-		angleDelta = cyclesPerSample * 2.0 * double_Pi;           // (2pi*f)
-        // PLAY SINE WAVE
-	}
-
-	void stopNote(float /*velocity*/, bool allowTailOff) override           // Stop Note
-	{
-		if (allowTailOff)
-		{
-			// start a tail-off by setting this flag. The render callback will pick up on
-			// this and do a fade out, calling clearCurrentNote() when it's finished.
-
-			if (tailOff == 0) // we only need to begin a tail-off if it's not already doing so - the
-								// stopNote method could be called more than once.
-				tailOff = 1.0;
-		}
-		else
-		{
-			// we're being told to stop playing immediately, so reset everything..
-            //tailOff = 1.0;
-			clearCurrentNote();
-			angleDelta = 0.0;
-		}
-	}
-
-	void pitchWheelMoved(int /*newValue*/) override                                     // Need to implement
-	{
-		// can't be bothered implementing this for the demo!
-		
-		// pseudo code
-		// MidiMessage = MidiMessage::getPitchWheelValue();
-		
-		// Variation 2
-        // frequency.setValue(currentlyPlayingNote.getFrequencyInHertz());
-		
-	}
-
-	void controllerMoved(int /*controllerNumber*/, int /*newValue*/) override           // Necessary?
-	{
-		// not interested in controllers in this case.
-	}
-
-	void renderNextBlock(AudioBuffer<float>& outputBuffer, int startSample, int numSamples) override
-	{
-		processBlock(outputBuffer, startSample, numSamples);
-	}
-
-	void renderNextBlock(AudioBuffer<double>& outputBuffer, int startSample, int numSamples) override
-	{
-		processBlock(outputBuffer, startSample, numSamples);
-	}
-
+        tailOff = 0.0;
+    }
+    
+    void noteStopped (bool allowTailOff) override
+    {
+        jassert (currentlyPlayingNote.keyState == MPENote::off);
+        
+        if (allowTailOff)
+        {
+            // start a tail-off by setting this flag. The render callback will pick up on
+            // this and do a fade out, calling clearCurrentNote() when it's finished.
+            
+            if (tailOff == 0.0) // we only need to begin a tail-off if it's not already doing so - the
+                // stopNote method could be called more than once.
+                tailOff = 1.0;
+        }
+        else
+        {
+            // we're being told to stop playing immediately, so reset everything..
+            clearCurrentNote();
+            phaseDelta = 0.0;
+        }
+    }
+    
+    void notePressureChanged() override
+    {
+        level.setValue (currentlyPlayingNote.pressure.asUnsignedFloat());
+    }
+    
+    void notePitchbendChanged() override
+    {
+        frequency.setValue (currentlyPlayingNote.getFrequencyInHertz());
+    }
+    
+    void noteTimbreChanged() override
+    {
+        timbre.setValue (currentlyPlayingNote.timbre.asUnsignedFloat());
+    }
+    
+    void noteKeyStateChanged() override
+    {
+    }
+    
+    void setCurrentSampleRate (double newRate) override
+    {
+        if (currentSampleRate != newRate)
+        {
+            noteStopped (false);
+            currentSampleRate = newRate;
+            
+            level.reset (currentSampleRate, smoothingLengthInSeconds);
+            timbre.reset (currentSampleRate, smoothingLengthInSeconds);
+            frequency.reset (currentSampleRate, smoothingLengthInSeconds);
+        }
+    }
+    
+    //==============================================================================
+    void renderNextBlock (AudioBuffer<float>& outputBuffer,
+                          int startSample,
+                          int numSamples) override
+    {
+        if (phaseDelta != 0.0)
+        {
+            if (tailOff > 0.0)
+            {
+                while (--numSamples >= 0)
+                {
+                    const float currentSample = getNextSample() * (float)tailOff;
+                    for (int i = outputBuffer.getNumChannels(); --i >= 0;)
+                        outputBuffer.addSample(i, startSample, currentSample);
+                        ++startSample;
+                    tailOff *= 0.99;
+                    if (tailOff <= 0.005)
+                    {
+                        clearCurrentNote();
+                        phaseDelta = 0.0;
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                while (--numSamples >= 0)
+                {
+                    const float currentSample = getNextSample();
+                    for (int i = outputBuffer.getNumChannels(); --i >= 0;)
+                        outputBuffer.addSample(i, startSample, currentSample);
+                        ++startSample;
+                }
+            }
+        }
+    }
+    
 private:
-	template <typename FloatType>
-	void processBlock(AudioBuffer<FloatType>& outputBuffer, int startSample, int numSamples)
-	{
-		if (angleDelta != 0.0)
-		{
-			if (tailOff > 0)
-			{
-				while (--numSamples >= 0)
-				{
-					auto currentSample = static_cast<FloatType> (std::sin(currentAngle) * level * tailOff);
-
-					for (int i = outputBuffer.getNumChannels(); --i >= 0;)
-						outputBuffer.addSample(i, startSample, currentSample);
-
-					currentAngle += angleDelta;
-					++startSample;
-
-					tailOff *= 0.99;
-
-					if (tailOff <= 0.005)
-					{
-						clearCurrentNote();
-
-						angleDelta = 0.0;
-						break;
-					}
-				}
-			}
-			else
-			{
-				while (--numSamples >= 0)
-				{
-					auto currentSample = static_cast<FloatType> (std::sin(currentAngle) * level);
-
-					for (int i = outputBuffer.getNumChannels(); --i >= 0;)
-						outputBuffer.addSample(i, startSample, currentSample);
-
-					currentAngle += angleDelta;
-					++startSample;
-				}
-			}
-		}
-	}
-
-	double currentAngle = 0, angleDelta = 0, level = 0, tailOff = 0;
+    //==============================================================================
+    float getNextSample() noexcept
+    {
+        const double levelDb = (level.getNextValue() - 1.0) * maxLevelDb;
+        const double amplitude = std::pow (10.0f, 0.05f * levelDb) * maxLevel;
+        
+        // timbre is used to blend between a sine and a square.
+        const double f1 = std::sin (phase);
+        const double a2 = timbre.getNextValue();
+        const double a1 = 1.0 - a2;
+        
+        const float nextSample = float (2*amplitude * (a1 * f1));
+        
+        const double cyclesPerSample = frequency.getNextValue() / currentSampleRate;
+        phaseDelta = 2.0 * double_Pi * cyclesPerSample;
+        phase = std::fmod (phase + phaseDelta, 2.0 * double_Pi);
+        
+        return nextSample;
+    }
+    
+    //==============================================================================
+    LinearSmoothedValue<double> level, timbre, frequency;
+    double phase, phaseDelta, tailOff;
+    
+    // some useful constants
+    const double maxLevel = 1.0f;
+    const double maxLevelDb = 31.0f;
+    const double smoothingLengthInSeconds = 0.01;
 };
 
 //==============================================================================
+class SquareWave : public MPESynthesiserVoice
+{
+public:
+    //==============================================================================
+    SquareWave()
+    : phase (0.0), phaseDelta (0.0), tailOff (0.0)
+    {
+    }
+    
+    //==============================================================================
+    void noteStarted() override
+    {
+        jassert (currentlyPlayingNote.isValid());
+        jassert (currentlyPlayingNote.keyState == MPENote::keyDown
+                 || currentlyPlayingNote.keyState == MPENote::keyDownAndSustained);
+        
+        // get data from the current MPENote
+        level.setValue (currentlyPlayingNote.pressure.asUnsignedFloat());
+        frequency.setValue (currentlyPlayingNote.getFrequencyInHertz());
+        timbre.setValue (currentlyPlayingNote.timbre.asUnsignedFloat());
+        
+        phase = 0.0;
+        const double cyclesPerSample = frequency.getNextValue() / currentSampleRate;
+        phaseDelta = 2.0 * double_Pi * cyclesPerSample;
+        
+        tailOff = 0.0;
+    }
+    
+    void noteStopped (bool allowTailOff) override
+    {
+        jassert (currentlyPlayingNote.keyState == MPENote::off);
+        
+        if (allowTailOff)
+        {
+            // start a tail-off by setting this flag. The render callback will pick up on
+            // this and do a fade out, calling clearCurrentNote() when it's finished.
+            
+            if (tailOff == 0.0) // we only need to begin a tail-off if it's not already doing so - the
+                // stopNote method could be called more than once.
+                tailOff = 1.0;
+        }
+        else
+        {
+            // we're being told to stop playing immediately, so reset everything..
+            clearCurrentNote();
+            phaseDelta = 0.0;
+        }
+    }
+    
+    void notePressureChanged() override
+    {
+        level.setValue (currentlyPlayingNote.pressure.asUnsignedFloat());
+    }
+    
+    void notePitchbendChanged() override
+    {
+        frequency.setValue (currentlyPlayingNote.getFrequencyInHertz());
+    }
+    
+    void noteTimbreChanged() override
+    {
+        timbre.setValue (currentlyPlayingNote.timbre.asUnsignedFloat());
+    }
+    
+    void noteKeyStateChanged() override
+    {
+    }
+    
+    void setCurrentSampleRate (double newRate) override
+    {
+        if (currentSampleRate != newRate)
+        {
+            noteStopped (false);
+            currentSampleRate = newRate;
+            
+            level.reset (currentSampleRate, smoothingLengthInSeconds);
+            timbre.reset (currentSampleRate, smoothingLengthInSeconds);
+            frequency.reset (currentSampleRate, smoothingLengthInSeconds);
+        }
+    }
+    
+    //==============================================================================
+    void renderNextBlock (AudioBuffer<float>& outputBuffer,
+                          int startSample,
+                          int numSamples) override
+    {
+        if (phaseDelta != 0.0)
+        {
+            if (tailOff > 0.0)
+            {
+                while (--numSamples >= 0)
+                {
+                    const float currentSample = getNextSample() * (float)tailOff;
+                    for (int i = outputBuffer.getNumChannels(); --i >= 0;)
+                        outputBuffer.addSample(i, startSample, currentSample);
+                        ++startSample;
+                    tailOff *= 0.99;
+                    if (tailOff <= 0.005)
+                    {
+                        clearCurrentNote();
+                        phaseDelta = 0.0;
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                while (--numSamples >= 0)
+                {
+                    const float currentSample = getNextSample();
+                    for (int i = outputBuffer.getNumChannels(); --i >= 0;)
+                        outputBuffer.addSample(i, startSample, currentSample);
+                        ++startSample;
+                }
+            }
+        }
+    }
+    
+private:
+    //==============================================================================
+    float getNextSample() noexcept
+    {
+        const double levelDb = (level.getNextValue() - 1.0) * maxLevelDb;
+        const double amplitude = std::pow (10.0f, 0.05f * levelDb) * maxLevel;
+        
+        // timbre is used to blend between a sine and a square.
+        const double f1 = std::cos (phase);                        // SQUARE
+        const double f2 = std::copysign (1.0, f1);
+        const double a2 = timbre.getNextValue();
+        
+        const float nextSample = float (amplitude * (a2 * f2)); // SQUARE WAVE
+        
+        const double cyclesPerSample = frequency.getNextValue() / currentSampleRate;
+        phaseDelta = 2.0 * double_Pi * cyclesPerSample;
+        phase = std::fmod (phase + phaseDelta, 2.0 * double_Pi);
+        
+        return nextSample;
+    }
+    
+    //==============================================================================
+    LinearSmoothedValue<double> level, timbre, frequency;
+    double phase, phaseDelta, tailOff;
+    
+    // some useful constants
+    const double maxLevel = 1.0f;
+    const double maxLevelDb = 31.0f;
+    const double smoothingLengthInSeconds = 0.01;
+};
+// END SQUARE WAVE
+//==============================================================================
+class TriangleWave : public MPESynthesiserVoice
+{
+public:
+    //==============================================================================
+    TriangleWave()
+    : phase (0.0), phaseDelta (0.0), tailOff (0.0)
+    {
+    }
+    
+    //==============================================================================
+    void noteStarted() override
+    {
+        jassert (currentlyPlayingNote.isValid());
+        jassert (currentlyPlayingNote.keyState == MPENote::keyDown
+                 || currentlyPlayingNote.keyState == MPENote::keyDownAndSustained);
+        
+        // get data from the current MPENote
+        level.setValue (currentlyPlayingNote.pressure.asUnsignedFloat());
+        frequency.setValue (currentlyPlayingNote.getFrequencyInHertz());
+        timbre.setValue (currentlyPlayingNote.timbre.asUnsignedFloat());
+        
+        phase = 0.0;
+        const double cyclesPerSample = frequency.getNextValue() / currentSampleRate;
+        phaseDelta = 2.0 * double_Pi * cyclesPerSample;
+        
+        tailOff = 0.0;
+    }
+    
+    void noteStopped (bool allowTailOff) override
+    {
+        jassert (currentlyPlayingNote.keyState == MPENote::off);
+        
+        if (allowTailOff)
+        {
+            // start a tail-off by setting this flag. The render callback will pick up on
+            // this and do a fade out, calling clearCurrentNote() when it's finished.
+            
+            if (tailOff == 0.0) // we only need to begin a tail-off if it's not already doing so - the
+                // stopNote method could be called more than once.
+                tailOff = 1.0;
+        }
+        else
+        {
+            // we're being told to stop playing immediately, so reset everything..
+            clearCurrentNote();
+            phaseDelta = 0.0;
+        }
+    }
+    
+    void notePressureChanged() override
+    {
+        level.setValue (currentlyPlayingNote.pressure.asUnsignedFloat());
+    }
+    
+    void notePitchbendChanged() override
+    {
+        frequency.setValue (currentlyPlayingNote.getFrequencyInHertz());
+    }
+    
+    void noteTimbreChanged() override
+    {
+        timbre.setValue (currentlyPlayingNote.timbre.asUnsignedFloat());
+    }
+    
+    void noteKeyStateChanged() override
+    {
+    }
+    
+    void setCurrentSampleRate (double newRate) override
+    {
+        if (currentSampleRate != newRate)
+        {
+            noteStopped (false);
+            currentSampleRate = newRate;
+            
+            level.reset (currentSampleRate, smoothingLengthInSeconds);
+            timbre.reset (currentSampleRate, smoothingLengthInSeconds);
+            frequency.reset (currentSampleRate, smoothingLengthInSeconds);
+        }
+    }
+    
+    //==============================================================================
+    void renderNextBlock (AudioBuffer<float>& outputBuffer,
+                          int startSample,
+                          int numSamples) override
+    {
+        if (phaseDelta != 0.0)
+        {
+            if (tailOff > 0.0)
+            {
+                while (--numSamples >= 0)
+                {
+                    const float currentSample = getNextSample() * (float)tailOff;
+                    for (int i = outputBuffer.getNumChannels(); --i >= 0;)
+                        outputBuffer.addSample(i, startSample, currentSample);
+                        ++startSample;
+                    tailOff *= 0.99;
+                    if (tailOff <= 0.005)
+                    {
+                        clearCurrentNote();
+                        phaseDelta = 0.0;
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                while (--numSamples >= 0)
+                {
+                    const float currentSample = getNextSample();
+                    for (int i = outputBuffer.getNumChannels(); --i >= 0;)
+                        outputBuffer.addSample(i, startSample, currentSample);
+                        ++startSample;
+                }
+            }
+        }
+    }
+    
+private:
+    //==============================================================================
+    float getNextSample() noexcept
+    {
+        const double levelDb = (level.getNextValue() - 1.0) * maxLevelDb;
+        const double amplitude = std::pow (10.0f, 0.05f * levelDb) * maxLevel;
+        
+        const float nextSample = (float(2 * amplitude) / double_Pi) * asin(sin((phase)));
+        
+        const double cyclesPerSample = frequency.getNextValue() / currentSampleRate;
+        phaseDelta = 2.0 * double_Pi * cyclesPerSample;
+        phase = std::fmod (phase + phaseDelta, 2.0 * double_Pi);
+        
+        return nextSample;
+    }
+    
+    //==============================================================================
+    LinearSmoothedValue<double> level, timbre, frequency;
+    double phase, phaseDelta, tailOff;
+    
+    // some useful constants
+    const double maxLevel = 1.0f;
+    const double maxLevelDb = 31.0f;
+    const double smoothingLengthInSeconds = 0.01;
+};
+// END TRIANGLE WAVE
+//==============================================================================
+class SawtoothWave : public MPESynthesiserVoice
+{
+public:
+    //==============================================================================
+    SawtoothWave()
+    : phase (0.0), phaseDelta (0.0), tailOff (0.0)
+    {
+    }
+    
+    //==============================================================================
+    void noteStarted() override
+    {
+        jassert (currentlyPlayingNote.isValid());
+        jassert (currentlyPlayingNote.keyState == MPENote::keyDown
+                 || currentlyPlayingNote.keyState == MPENote::keyDownAndSustained);
+        
+        // get data from the current MPENote
+        level.setValue (currentlyPlayingNote.pressure.asUnsignedFloat());
+        frequency.setValue (currentlyPlayingNote.getFrequencyInHertz());
+        timbre.setValue (currentlyPlayingNote.timbre.asUnsignedFloat());
+        
+        phase = 0.0;
+        const double cyclesPerSample = frequency.getNextValue() / currentSampleRate;
+        phaseDelta = 2.0 * double_Pi * cyclesPerSample;
+        
+        tailOff = 0.0;
+    }
+    
+    void noteStopped (bool allowTailOff) override
+    {
+        jassert (currentlyPlayingNote.keyState == MPENote::off);
+        
+        if (allowTailOff)
+        {
+            // start a tail-off by setting this flag. The render callback will pick up on
+            // this and do a fade out, calling clearCurrentNote() when it's finished.
+            
+            if (tailOff == 0.0) // we only need to begin a tail-off if it's not already doing so - the
+                // stopNote method could be called more than once.
+                tailOff = 1.0;
+        }
+        else
+        {
+            // we're being told to stop playing immediately, so reset everything..
+            clearCurrentNote();
+            phaseDelta = 0.0;
+        }
+    }
+    
+    void notePressureChanged() override
+    {
+        level.setValue (currentlyPlayingNote.pressure.asUnsignedFloat());
+    }
+    
+    void notePitchbendChanged() override
+    {
+        frequency.setValue (currentlyPlayingNote.getFrequencyInHertz());
+    }
+    
+    void noteTimbreChanged() override
+    {
+        timbre.setValue (currentlyPlayingNote.timbre.asUnsignedFloat());
+    }
+    
+    void noteKeyStateChanged() override
+    {
+    }
+    
+    void setCurrentSampleRate (double newRate) override
+    {
+        if (currentSampleRate != newRate)
+        {
+            noteStopped (false);
+            currentSampleRate = newRate;
+            
+            level.reset (currentSampleRate, smoothingLengthInSeconds);
+            timbre.reset (currentSampleRate, smoothingLengthInSeconds);
+            frequency.reset (currentSampleRate, smoothingLengthInSeconds);
+        }
+    }
+    
+    //==============================================================================
+    void renderNextBlock (AudioBuffer<float>& outputBuffer,
+                          int startSample,
+                          int numSamples) override
+    {
+        
+        if (phaseDelta != 0.0)
+        {
+            if (tailOff > 0.0)
+            {
+                while (--numSamples >= 0)
+                {
+                    const float currentSample = getNextSample() * (float)tailOff;
+                    
+                    for (int i = outputBuffer.getNumChannels(); --i >= 0;)
+                        outputBuffer.addSample(i, startSample, currentSample);
+                        ++startSample;
+                    tailOff *= 0.99;
+                    if (tailOff <= 0.005)
+                    {
+                        clearCurrentNote();
+                        phaseDelta = 0.0;
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                while (--numSamples >= 0)
+                {
+                    const float currentSample = getNextSample();
+                    for (int i = outputBuffer.getNumChannels(); --i >= 0;)
+                        outputBuffer.addSample(i, startSample, currentSample);
+                        ++startSample;
+                }
+            }
+        }
+        //coeff.makeLowPass(44100, 1000);
+        //filter.processSamples(outputBuffer.getWritePointer(0), numSamples);
+    }
+    
+private:
+    //==============================================================================
+    float getNextSample() noexcept
+    {
+        const double levelDb = (level.getNextValue() - 1.0) * maxLevelDb;
+        const double amplitude = std::pow (10.0f, 0.05f * levelDb) * maxLevel;
+        
+        const float nextSample = (float (-2 * amplitude) / double_Pi) * atan(1/tan((phase)));
+        
+        const double cyclesPerSample = frequency.getNextValue() / currentSampleRate;
+        phaseDelta = double_Pi * cyclesPerSample;
+        phase = std::fmod (phase + phaseDelta, double_Pi);
+        
+        return nextSample;
+    }
+    
+    //==============================================================================
+    LinearSmoothedValue<double> level, timbre, frequency;
+    double phase, phaseDelta, tailOff;
+    
+    // some useful constants
+    const double maxLevel = 1.0f;
+    const double maxLevelDb = 31.0f;
+    const double smoothingLengthInSeconds = 0.01;
+    //IIRCoefficients coeff;
+    //IIRFilter filter;
+    double m_sampleRate;
+};
+
+// END SAWTOOTH WAVE
+//==============================================================================
+
 JuceDemoPluginAudioProcessor::JuceDemoPluginAudioProcessor()
 	: AudioProcessor(getBusesProperties())
 {
@@ -166,7 +628,7 @@ JuceDemoPluginAudioProcessor::JuceDemoPluginAudioProcessor()
 	addParameter(gainParam = new AudioParameterFloat("gain", "Gain", 0.0f, 1.0f, 0.9f));
     addParameter(delayParam = new AudioParameterFloat("delay", "Delay Feedback", 0.0f, 0.5f, 0.5f));    // 0.5f -> 1.0f
 
-	initialiseSynth(8); // Start with Polyphony
+	initialiseSynth(8, 1); // Start with Polyphony and Sinewave
 }
 
 JuceDemoPluginAudioProcessor::~JuceDemoPluginAudioProcessor()
@@ -174,33 +636,56 @@ JuceDemoPluginAudioProcessor::~JuceDemoPluginAudioProcessor()
 }
 
 // Now a public method
-void JuceDemoPluginAudioProcessor::initialiseSynth(int voices)
+void JuceDemoPluginAudioProcessor::initialiseSynth(int voices, int wave)
 {
+    this->voiceNum = voices;
+    this->waveform=wave;
     // Reset the Synth
-    synth.clearSounds();
-    synth.clearVoices();
+    synthe.clearVoices();
     
     // Apply the number of voices
 	int numVoices = voices;                // 8 voice synth
     
-	// Add some voices...
-	for (int i = numVoices; --i >= 0;)
-		synth.addVoice(new SineWaveVoice());
-        // synth.addVoice(new SquareWaveVoice());
+    switch(wave)
+    {
+        case 1:
+            // Sine
+            for (int i = numVoices; --i >= 0;)
+            {
+                synthe.addVoice(new SineWave);
+            }
+            break;
+        case 2:
+            // Triangle
+            for (int i = numVoices; --i >= 0;)
+            {
+                synthe.addVoice(new TriangleWave);
+            }
+            break;
+        case 3:
+            // Square
+            for (int i = numVoices; --i >= 0;)
+            {
+                synthe.addVoice(new SquareWave);
+            }
+            break;
+        case 4:
+            // Sawtooth
+            for (int i = numVoices; --i >= 0;)
+            {
+                synthe.addVoice(new SawtoothWave);
+            }
+            break;
+        default:
+            break;
+    }
 
-	// ..and give the synth a sound to play
-	synth.addSound(new SineWaveSound());                              // SYNTH PLAY
-    
-    // BEGIN PITCHBEND TEST
-    
-    //synth.handlePitchWheel(1, MidiMessage::getPitchWheelValue());
     // Add Pitch Bend
-    // synth.setPitchbendTrackingMode (MPEInstrument::allNotesOnChannel);  // Pitch Bend
+    synthe.setPitchbendTrackingMode (MPEInstrument::allNotesOnChannel);  // Pitch Bend
     // All notes
-    // synth.enableLegacyMode(24);
-    // synth.setVoiceStealingEnabled(false);
-    // visualiserInstrument.enableLegacyMode(24);
-   
+    synthe.enableLegacyMode(24);
+    synthe.setVoiceStealingEnabled(false);
+    visualiserInstrument.enableLegacyMode(24);
 }
 
 //==============================================================================
@@ -236,7 +721,7 @@ void JuceDemoPluginAudioProcessor::prepareToPlay(double newSampleRate, int /*sam
 {
 	// Use this method as the place to do any pre-playback
 	// initialisation that you need..
-	synth.setCurrentPlaybackSampleRate(newSampleRate);
+	synthe.setCurrentPlaybackSampleRate(newSampleRate);
 	keyboardState.reset();
 
 	if (isUsingDoublePrecision())
@@ -281,7 +766,7 @@ void JuceDemoPluginAudioProcessor::process(AudioBuffer<FloatType>& buffer,      
 
 
 	// and now get our synth to process these midi events and generate its output.
-	synth.renderNextBlock(buffer, midiMessages, 0, numSamples);                     // Add synth to buffer
+	synthe.renderNextBlock(buffer, midiMessages, 0, numSamples);                     // Add synth to buffer
 	
     
 	// Apply our delay effect to the new output..

@@ -88,8 +88,16 @@ public:
 	AudioParameterFloat* gainParam = nullptr;
 	AudioParameterFloat* delayParam = nullptr;
 
-    void initialiseSynth(int voices);
+    void initialiseSynth(int voices, int wave);
     
+    int getWaveform()
+    {
+        return waveform;
+    }
+    int getVoiceNum()
+    {
+        return voiceNum;
+    }
 private:
 	//==============================================================================
 	template <typename FloatType>
@@ -103,9 +111,14 @@ private:
 	AudioBuffer<double> delayBufferDouble;
 
 	int delayPosition = 0;
+    
+    int voiceNum;
+    int waveform;
 
-	Synthesiser synth;
-
+	//Synthesiser synth;
+    MPESynthesiser synthe;
+    MPEInstrument visualiserInstrument;
+    
 	//void initialiseSynth(int voices);
 	void updateCurrentTimeInfoFromHost();
 	static BusesProperties getBusesProperties();
