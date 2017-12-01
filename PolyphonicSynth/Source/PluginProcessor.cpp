@@ -723,6 +723,11 @@ void JuceDemoPluginAudioProcessor::prepareToPlay(double newSampleRate, int /*sam
 	// initialisation that you need..
 	synthe.setCurrentPlaybackSampleRate(newSampleRate);
 	keyboardState.reset();
+    
+    // FILTERING
+    L.setCoefficients(filter.makeLowPass(newSampleRate, 100, 1.0));
+    R.setCoefficients(filter.makeLowPass(newSampleRate, 100, 1.0));
+    // END FILTER
 
 	if (isUsingDoublePrecision())
 	{
@@ -771,12 +776,15 @@ void JuceDemoPluginAudioProcessor::process(AudioBuffer<FloatType>& buffer,      
     
 	// Apply our delay effect to the new output..
 	applyDelay(buffer, delayBuffer);                                                // Add delay
-
-	// In case we have more outputs than inputs, we'll clear any output
+    
+    
+    // In case we have more outputs than inputs, we'll clear any output
 	// channels that didn't contain input data, (because these aren't
 	// guaranteed to be empty - they may contain garbage).
 	for (int i = getTotalNumInputChannels(); i < getTotalNumOutputChannels(); ++i)
+    {
 		buffer.clear(i, 0, numSamples);
+    }
 
 	applyGain(buffer, delayBuffer); // apply our gain-change to the outgoing data.. // Add delay
 
@@ -790,9 +798,13 @@ void JuceDemoPluginAudioProcessor::applyGain(AudioBuffer<FloatType>& buffer, Aud
     // Gain Application
 	ignoreUnused(delayBuffer);
 	const float gainLevel = *gainParam;
+    
+    // Apply Filter?
 
-	for (int channel = 0; channel < getTotalNumOutputChannels(); ++channel)
+    for (int channel = 0; channel < getTotalNumOutputChannels(); ++channel)
+    {
 		buffer.applyGain(channel, 0, buffer.getNumSamples(), gainLevel);
+    }
 }
 
 

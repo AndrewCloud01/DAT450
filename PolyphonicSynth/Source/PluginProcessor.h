@@ -119,6 +119,10 @@ private:
     MPESynthesiser synthe;
     MPEInstrument visualiserInstrument;
     
+    // Filters
+    IIRFilter L, R;
+    IIRCoefficients filter;
+    
 	//void initialiseSynth(int voices);
 	void updateCurrentTimeInfoFromHost();
 	static BusesProperties getBusesProperties();
