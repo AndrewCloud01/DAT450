@@ -62,9 +62,6 @@ JuceDemoPluginAudioProcessorEditor::JuceDemoPluginAudioProcessorEditor(JuceDemoP
 	qLabel(String(), "Q:"),
 	freqLabel(String(), "Frequency;")
 {
-
-    //owner.initialiseSynth(1);
-    
 	//==============================================================================
     // MIDI Device Input List
     addAndMakeVisible (midiInputListLabel);
@@ -94,19 +91,24 @@ JuceDemoPluginAudioProcessorEditor::JuceDemoPluginAudioProcessorEditor(JuceDemoP
 	}
 
 	//==============================================================================
-	// ComboBox Label and Item Definition
+	// COMBO BOXES
+    
+    // Waveform Selection
 	addAndMakeVisible(waveformSelection);
+    waveformSelection.addListener(this);
 	waveformLabel.setText("Choose Waveform", dontSendNotification);
 	waveformLabel.attachToComponent(&waveformSelection, true);
 	waveformSelection.addItem("Sine", 1);
 	waveformSelection.addItem("Triangle", 2);
 	waveformSelection.addItem("Square", 3);
+    waveformSelection.addItem("Sawtooth", 4);
 	waveformSelection.setSelectedId(1);
-
+    // Filter Selection
 	addAndMakeVisible(filterSelection);
+    filterSelection.addListener(this);
 	filterLabel.setText("Choose Filter", dontSendNotification);
 	filterLabel.attachToComponent(&filterSelection, true);
-	filterSelection.addItem("none", 1);
+	filterSelection.addItem("None", 1);
 	filterSelection.addItem("Low Pass", 2);
 	filterSelection.addItem("High Pass", 3);
 	filterSelection.addItem("Band Pass", 4);
@@ -138,9 +140,8 @@ JuceDemoPluginAudioProcessorEditor::JuceDemoPluginAudioProcessorEditor(JuceDemoP
 	freqLabel.setFont(Font(11.0f));
 
 	//==============================================================================
-	// ON-SCREEN MIDI KEYBOARD COMPONENT
-	//addAndMakeVisible(midiKeyboard);
-    midiKeyboardState.addListener(this);    // Listen for MIDI Controller Input
+    // MIDI CONTROLLER INPUT
+    midiKeyboardState.addListener(this);
 	
 	//==============================================================================
     //MIDI Display
@@ -157,14 +158,11 @@ JuceDemoPluginAudioProcessorEditor::JuceDemoPluginAudioProcessorEditor(JuceDemoP
     // End MIDI display
     
 	//==============================================================================
-    // BEGIN Toggle Polyphony
+    // POLYPHONY
     addAndMakeVisible(Poly);
     Poly.setButtonText ("Polyphony Enabled");
-    Poly.setToggleState (true, dontSendNotification);       // Auto On
-    // Works on buttonClicked()
+    Poly.setToggleState (true, dontSendNotification);
     Poly.addListener(this);
-    
-    // END Toggle Polyphony
     
 	//==============================================================================
     // set resize limits for this plug-in
@@ -181,6 +179,8 @@ JuceDemoPluginAudioProcessorEditor::~JuceDemoPluginAudioProcessorEditor()
     midiKeyboardState.removeListener (this);
     deviceManager.removeMidiInputCallback (MidiInput::getDevices()[midiInputList.getSelectedItemIndex()], this);
     midiInputList.removeListener (this);
+    filterSelection.removeListener(this);
+    waveformSelection.removeListener(this);
     Poly.removeListener(this);
 }
 
@@ -201,22 +201,17 @@ void JuceDemoPluginAudioProcessorEditor::resized()
 	//==============================================================================
     // MIDI Display
     midiInputList.setBounds (r.removeFromTop (35).removeFromRight (getWidth() - 75).reduced(4));  //Flush Left
-    
-    // ON-SCREEN MIDI KEYBOARD
-	//midiKeyboard.setBounds(r.removeFromTop(60).reduced(4));
-    
 	r.removeFromTop(5);    // Space
+    
 	//==============================================================================
-	// Poly/Mono toggle
+	// POLY TOGGLE
 	Rectangle<int> polyToggle(r.removeFromTop(10).expanded(6));
 	Poly.setBounds(polyToggle.removeFromLeft(jmin(200, polyToggle.getWidth())));
-	
 	r.removeFromTop(40);    // Space
 	
 	//==============================================================================
-	// Pot Areas 
-	Rectangle<int> sliderArea(r.removeFromTop(40).expanded(10)); 
-  
+	// POTS
+	Rectangle<int> sliderArea(r.removeFromTop(40).expanded(10));
 	sliderArea.removeFromLeft(10); // space from left
     
 	// Gain Pot Location
@@ -234,7 +229,7 @@ void JuceDemoPluginAudioProcessorEditor::resized()
     r.removeFromTop(20);    // Space
 	
 	//==============================================================================
-	// ComboBox Area
+	// COMBO BOX AREAS
 	Rectangle<int> filterArea(r.removeFromTop(30));
 
 	// Waveform ComboBox Area
@@ -244,34 +239,15 @@ void JuceDemoPluginAudioProcessorEditor::resized()
 	// Filter ComboBox Area
 	filterSelection.setBounds(filterArea.removeFromLeft(100));
 	filterSelection.setBounds(filterArea.removeFromLeft(filterArea.getWidth()));
-    
     r.removeFromTop(10);    // Space
+    
 	//==============================================================================
-    // MIDI Display Textbox
+    // MIDI DISPLAY TEXTBOXES
     midiMessagesBox.setBounds (r.removeFromBottom(20));           // TextEditor for MIDI Display
     midiMessagesBox.setBounds (r.reduced (2));
     
 	getProcessor().lastUIWidth = getWidth();
 	getProcessor().lastUIHeight = getHeight();
-}
-
-void JuceDemoPluginAudioProcessorEditor::buttonClicked (Button* button) // Poly Toggle Button
-{
-    // Get button state
-    int buttonState = button->getToggleState();
-    
-    // Check Button State and change synth accordingly
-    if (buttonState == 0)
-    {
-        // The button is untoggled
-        this->getProcessor().initialiseSynth(1);
-    }
-    else
-    {
-        // Is toggled
-        this->getProcessor().initialiseSynth(8);
-    }
-    
 }
 //==============================================================================
 // BEGIN MIDI DISPLAY METHODS
@@ -351,11 +327,81 @@ void JuceDemoPluginAudioProcessorEditor::handleNoteOff (MidiKeyboardState*, int 
     }
 }
 
-// MIDI Input ComboBox Change Action
+// Poly Toggle Button
+void JuceDemoPluginAudioProcessorEditor::buttonClicked (Button* button) // Poly Toggle Button
+{
+    // Get button state
+    int buttonState = button->getToggleState();
+    
+    // Check Button State and change synth accordingly
+    if (buttonState == 0)
+    {
+        // The button is untoggled
+        this->getProcessor().initialiseSynth(1, this->getProcessor().getWaveform());
+    }
+    else
+    {
+        // Is toggled
+        this->getProcessor().initialiseSynth(8, this->getProcessor().getWaveform());
+    }
+}
+// ComboBox Change Action
 void JuceDemoPluginAudioProcessorEditor::comboBoxChanged (ComboBox* box)
 {
     if (box == &midiInputList)
+    {
         setMidiInput (midiInputList.getSelectedItemIndex());
+    }    
+    else if (box == &waveformSelection)
+    {
+        cout << waveformSelection.getSelectedId();
+        if (waveformSelection.getSelectedId() == 1)
+        {
+            // Sine Wave
+            this->getProcessor().initialiseSynth(this->getProcessor().getVoiceNum(), 1);
+        }
+        
+        if (waveformSelection.getSelectedId() == 2)
+        {
+            // Triangle Wave
+            this->getProcessor().initialiseSynth(this->getProcessor().getVoiceNum(), 2);
+        }
+        
+        if (waveformSelection.getSelectedId() == 3)
+        {
+            // Square Wave
+            this->getProcessor().initialiseSynth(this->getProcessor().getVoiceNum(), 3);
+        }
+        
+        if (waveformSelection.getSelectedId() == 4)
+        {
+            // Sawtooth
+            this->getProcessor().initialiseSynth(this->getProcessor().getVoiceNum(), 4);
+        }
+        
+    }
+    else if (box == &filterSelection)
+    {
+        if (filterSelection.getSelectedId() == 1)
+        {
+            // None
+        }
+        
+        if (filterSelection.getSelectedId() == 2)
+        {
+            // LP
+        }
+        
+        if (filterSelection.getSelectedId() == 3)
+        {
+            // HP
+        }
+        
+        if (filterSelection.getSelectedId() == 4)
+        {
+            // BP
+        }
+    }
 }
 
 // Starts listening to a MIDI input device, enabling it if necessary.

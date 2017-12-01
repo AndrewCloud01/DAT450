@@ -102,6 +102,7 @@ public:
     
     // END MIDI DISPLAY METHODS
     //==============================================================================
+    
 
 private:
     // Advanced GUI Components (BTS)
