@@ -581,8 +581,6 @@ public:
                 }
             }
         }
-        //coeff.makeLowPass(44100, 1000);
-        //filter.processSamples(outputBuffer.getWritePointer(0), numSamples);
     }
     
 private:
@@ -609,8 +607,6 @@ private:
     const double maxLevel = 1.0f;
     const double maxLevelDb = 31.0f;
     const double smoothingLengthInSeconds = 0.01;
-    //IIRCoefficients coeff;
-    //IIRFilter filter;
     double m_sampleRate;
 };
 
@@ -621,12 +617,16 @@ JuceDemoPluginAudioProcessor::JuceDemoPluginAudioProcessor()
 	: AudioProcessor(getBusesProperties())
 {
 	lastPosInfo.resetToDefault();
+    
+    
 
 	// This creates our parameters. We'll keep some raw pointers to them in this class,
 	// so that we can easily access them later, but the base class will take care of
 	// deleting them for us.
 	addParameter(gainParam = new AudioParameterFloat("gain", "Gain", 0.0f, 1.0f, 0.9f));
-    addParameter(delayParam = new AudioParameterFloat("delay", "Delay Feedback", 0.0f, 0.5f, 0.5f));    // 0.5f -> 1.0f
+    addParameter(delayParam = new AudioParameterFloat("delay", "Delay Feedback", 0.0f, 0.5f, 0.5f));
+    addParameter(freqParam = new AudioParameterFloat("freq", "Frequency Cutoff", 20.0f, 20000.0f, 5000.0f));
+    addParameter(qParam = new AudioParameterFloat("q", "Quality Control", 0.1f, 2.0f, 0.5f));
 
 	initialiseSynth(8, 1); // Start with Polyphony and Sinewave
 }
@@ -722,22 +722,25 @@ void JuceDemoPluginAudioProcessor::prepareToPlay(double newSampleRate, int /*sam
 	// Use this method as the place to do any pre-playback
 	// initialisation that you need..
 	synthe.setCurrentPlaybackSampleRate(newSampleRate);
+    sampleRate = newSampleRate;
 	keyboardState.reset();
     
     // FILTERING
-    L.setCoefficients(filter.makeLowPass(newSampleRate, 100, 1.0));
-    R.setCoefficients(filter.makeLowPass(newSampleRate, 100, 1.0));
+    // Default Settings
+    L.setCoefficients(lowFilter.makeLowPass(sampleRate, 5000.0f, 0.5f));
+    R.setCoefficients(lowFilter.makeLowPass(sampleRate, 5000.0f, 0.5f));
+    
     // END FILTER
 
 	if (isUsingDoublePrecision())
 	{
-		delayBufferDouble.setSize(2, 12000);
+		//delayBufferDouble.setSize(2, 12000);
 		delayBufferFloat.setSize(1, 1);
 	}
 	else
 	{
 		delayBufferFloat.setSize(2, 12000);
-		delayBufferDouble.setSize(1, 1);
+		//delayBufferDouble.setSize(1, 1);
 	}
 
 	reset();
@@ -755,7 +758,22 @@ void JuceDemoPluginAudioProcessor::reset()
 	// Use this method as the place to clear any delay lines, buffers, etc, as it
 	// means there's been a break in the audio's continuity.
 	delayBufferFloat.clear();
-	delayBufferDouble.clear();
+	//delayBufferDouble.clear();
+}
+
+double JuceDemoPluginAudioProcessor::getSampleRate()
+{
+    return this->sampleRate;
+}
+
+int JuceDemoPluginAudioProcessor::getFilterType()
+{
+    return this->filterType;
+}
+
+void JuceDemoPluginAudioProcessor::setFilterType(int type)
+{
+    this->filterType = type;
 }
 
 template <typename FloatType>                                                       // This is where the action of the plug in is
@@ -763,7 +781,9 @@ void JuceDemoPluginAudioProcessor::process(AudioBuffer<FloatType>& buffer,      
 	MidiBuffer& midiMessages,                                                       
 	AudioBuffer<FloatType>& delayBuffer)
 {
-	const int numSamples = buffer.getNumSamples();
+    
+    float numSamples = buffer.getNumSamples();
+    //const int numSamples = buffer.getNumSamples();
 
 	// Now pass any incoming midi messages to our keyboard state object, and let it
 	// add messages to the buffer if the user is clicking on the on-screen keys
@@ -785,8 +805,36 @@ void JuceDemoPluginAudioProcessor::process(AudioBuffer<FloatType>& buffer,      
     {
 		buffer.clear(i, 0, numSamples);
     }
-
-	applyGain(buffer, delayBuffer); // apply our gain-change to the outgoing data.. // Add delay
+    
+    // Apply Filter
+    if(getFilterType() == 1)
+    {
+        L.setCoefficients(lowFilter.makeLowPass(getSampleRate(), *freqParam, *qParam));
+        R.setCoefficients(lowFilter.makeLowPass(getSampleRate(), *freqParam, *qParam));
+        
+        L.processSamples (buffer.getWritePointer (0), buffer.getNumSamples());
+        R.processSamples (buffer.getWritePointer (1), buffer.getNumSamples());
+    }
+    else if (getFilterType()  == 2)
+    {
+        L.setCoefficients(lowFilter.makeHighPass(getSampleRate(), *freqParam, *qParam));
+        R.setCoefficients(lowFilter.makeHighPass(getSampleRate(), *freqParam, *qParam));
+        
+        L.processSamples (buffer.getWritePointer (0), buffer.getNumSamples());
+        R.processSamples (buffer.getWritePointer (1), buffer.getNumSamples());
+    }
+    else if (getFilterType()  == 3)
+    {
+        // BandFilter
+        L.setCoefficients(lowFilter.makeBandPass(getSampleRate(), *freqParam, *qParam));
+        R.setCoefficients(lowFilter.makeBandPass(getSampleRate(), *freqParam, *qParam));
+        
+        L.processSamples (buffer.getWritePointer (0), buffer.getNumSamples());
+        R.processSamples (buffer.getWritePointer (1), buffer.getNumSamples());
+    }
+    // Else
+    // Apply Gain
+    applyGain(buffer, delayBuffer); // apply our gain-change to the outgoing data.. // Add delay
 
     // Now ask the host for the current time so we can store it to be displayed later...
 	updateCurrentTimeInfoFromHost();
@@ -797,9 +845,7 @@ void JuceDemoPluginAudioProcessor::applyGain(AudioBuffer<FloatType>& buffer, Aud
 {
     // Gain Application
 	ignoreUnused(delayBuffer);
-	const float gainLevel = *gainParam;
-    
-    // Apply Filter?
+	const float gainLevel = *gainParam;    
 
     for (int channel = 0; channel < getTotalNumOutputChannels(); ++channel)
     {
