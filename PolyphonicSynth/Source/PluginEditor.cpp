@@ -127,17 +127,20 @@ JuceDemoPluginAudioProcessorEditor::JuceDemoPluginAudioProcessorEditor(JuceDemoP
     delayLabel.attachToComponent(delaySlider, false);
     delayLabel.setFont(Font(11.0f));
 
+    
 	// Q SLIDER AND LABEL
-	addAndMakeVisible(qSlider = new ParameterSlider(*owner.delayParam));          // Q slider
+	addAndMakeVisible(qSlider = new ParameterSlider(*owner.qParam));          // Q slider
 	qSlider->setSliderStyle(Slider::Rotary);                                      // Pot Slider
 	qLabel.attachToComponent(qSlider, false);
 	qLabel.setFont(Font(11.0f));
+     
 
 	// FREQUENCY SLIDER AND LABEL
-	addAndMakeVisible(freqSlider = new ParameterSlider(*owner.delayParam));          // Q slider
+	addAndMakeVisible(freqSlider = new ParameterSlider(*owner.freqParam));          // Q slider
 	freqSlider->setSliderStyle(Slider::Rotary);                                      // Pot Slider
 	freqLabel.attachToComponent(freqSlider, false);
 	freqLabel.setFont(Font(11.0f));
+    freqSlider->setSkewFactor(0.5);
 
 	//==============================================================================
     // MIDI CONTROLLER INPUT
@@ -382,25 +385,12 @@ void JuceDemoPluginAudioProcessorEditor::comboBoxChanged (ComboBox* box)
     }
     else if (box == &filterSelection)
     {
-        if (filterSelection.getSelectedId() == 1)
-        {
-            // None
-        }
-        
-        if (filterSelection.getSelectedId() == 2)
-        {
-            // LP
-        }
-        
-        if (filterSelection.getSelectedId() == 3)
-        {
-            // HP
-        }
-        
-        if (filterSelection.getSelectedId() == 4)
-        {
-            // BP
-        }
+        cout << filterSelection.getSelectedItemIndex();
+        this->getProcessor().setFilterType(filterSelection.getSelectedItemIndex());
+        // 0 (None)
+        // 1 (Lowpass)
+        // 2 (Highpass)
+        // 3 (Bandpass)
     }
 }
 

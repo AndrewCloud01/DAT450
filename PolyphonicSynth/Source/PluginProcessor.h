@@ -37,11 +37,13 @@ public:
 		process(buffer, midiMessages, delayBufferFloat);
 	}
 
+    /*
 	void processBlock(AudioBuffer<double>& buffer, MidiBuffer& midiMessages) override
 	{
 		jassert(isUsingDoublePrecision());
-		process(buffer, midiMessages, delayBufferDouble);
+		//process(buffer, midiMessages, delayBufferDouble);
 	}
+     */
 
 	//==============================================================================
 	bool hasEditor() const override { return true; }
@@ -87,8 +89,15 @@ public:
 	// Our parameters
 	AudioParameterFloat* gainParam = nullptr;
 	AudioParameterFloat* delayParam = nullptr;
+    
+    // For Filters
+    AudioParameterFloat* freqParam = nullptr;
+    AudioParameterFloat* qParam = nullptr;
 
     void initialiseSynth(int voices, int wave);
+    double getSampleRate();
+    int getFilterType();
+    void setFilterType(int type);
     
     int getWaveform()
     {
@@ -98,6 +107,8 @@ public:
     {
         return voiceNum;
     }
+    
+    
 private:
 	//==============================================================================
 	template <typename FloatType>
@@ -108,18 +119,26 @@ private:
 	void applyDelay(AudioBuffer<FloatType>&, AudioBuffer<FloatType>& delayBuffer);
 
 	AudioBuffer<float> delayBufferFloat;
-	AudioBuffer<double> delayBufferDouble;
+	//AudioBuffer<double> delayBufferDouble;
 
 	int delayPosition = 0;
     
     int voiceNum;
     int waveform;
+    
+    int filterType;
+    
+    double sampleRate;
+    
 
 	//Synthesiser synth;
     MPESynthesiser synthe;
     MPEInstrument visualiserInstrument;
     
-	//void initialiseSynth(int voices);
+    // Filters
+    IIRFilter L, R;
+    IIRCoefficients lowFilter, highFilter, bandFilter;
+    
 	void updateCurrentTimeInfoFromHost();
 	static BusesProperties getBusesProperties();
 
